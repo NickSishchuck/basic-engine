@@ -16,5 +16,5 @@ target_include_directories(Common
 
 target_link_libraries(Common
     PUBLIC
-        OpenGLRenderer
+        renderer
 )
