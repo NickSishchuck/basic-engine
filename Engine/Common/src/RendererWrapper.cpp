@@ -115,15 +115,15 @@ void OpenGLRendererWrapper::BeginFrame() {
     // Update camera
     camera->Inputs(window);
 
-    // ----- RENDER PYRAMID -----
-    shader->Activate();
-    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
-    vao->Bind();
-    glDrawElements(GL_TRIANGLES, indicesSize/sizeof(unsigned int), GL_UNSIGNED_INT, 0);
-    vao->Unbind();
+    // // ----- RENDER PYRAMID -----
+    // shader->Activate();
+    // camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
+    // vao->Bind();
+    // glDrawElements(GL_TRIANGLES, indicesSize/sizeof(unsigned int), GL_UNSIGNED_INT, 0);
+    // vao->Unbind();
 
     // ----- RENDER CUBE ------
-    // Animate the cube position (simple left-right movement)
+    // Animate the cube position (left-right movement)
     static float direction = 1.0f; // 1 for right, -1 for left
     static float speed = 1.0f;     // Units per second
 
@@ -263,19 +263,22 @@ void OpenGLRendererWrapper::RenderCube(const glm::vec3& position, const glm::vec
     // Activate shader
     shader->Activate();
 
-    // Use the camera matrix, but apply a transform to the cube's position
-    glm::mat4 viewMatrix = glm::translate(glm::mat4(1.0f), position);
-    viewMatrix = glm::scale(viewMatrix, scale);
+    // Create model matrix for the cube
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, position);
+    modelMatrix = glm::scale(modelMatrix, scale);
 
-    // Set the camera matrix with the cube's position already factored in
+    // Set the camera matrix
     camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
+
+    // Set the model matrix uniform
+    GLuint modelLoc = glGetUniformLocation(shader->ID, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
     // Switch to cube VAO
     cubeVAO->Bind();
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
     cubeVAO->Unbind();
-
-    LOG_GLERROR("Error in rendering cube: ")
 }
 
 } // namespace Common
