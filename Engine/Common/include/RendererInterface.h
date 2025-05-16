@@ -3,6 +3,9 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Engine {
 namespace Common {
@@ -15,6 +18,11 @@ public:
     virtual void EndFrame() = 0;
     virtual void Shutdown() = 0;
     virtual GLFWwindow* GetWindow() const = 0;
+
+
+    virtual void CreateCube() = 0;
+    virtual void RenderCube(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f)) = 0;
+
 };
 
 } // namespace Common

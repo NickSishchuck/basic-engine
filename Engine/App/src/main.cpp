@@ -13,7 +13,6 @@ int main() {
     // Main loop
     while (!glfwWindowShouldClose(renderer.GetWindow())) {
         renderer.BeginFrame();
-        // The rendering is now handled inside BeginFrame
         renderer.EndFrame();
     }
 

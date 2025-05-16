@@ -5,6 +5,7 @@
 #include "../../../renderer/include/EBO.h"
 #include "../../../renderer/include/ImGuiManager.h"
 #include "../../../renderer/include/Camera.h"
+#include "../../../renderer/include/Logger.h"
 #include <iostream>
 
 namespace Engine {
@@ -68,7 +69,7 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
         glfwTerminate();
         return false;
     }
-
+    CreateCube();
     // Setup shader
     shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
 
@@ -99,20 +100,54 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
     return true;
 }
 
+
 void OpenGLRendererWrapper::BeginFrame() {
     // Clear the screen
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render the pyramid
-    shader->Activate();
+    // Current time for animation
+    static float lastFrameTime = glfwGetTime();
+    float currentTime = glfwGetTime();
+    float deltaTime = currentTime - lastFrameTime;
+    lastFrameTime = currentTime;
 
     // Update camera
     camera->Inputs(window);
-    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
 
+    // ----- RENDER PYRAMID -----
+    shader->Activate();
+    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
     vao->Bind();
     glDrawElements(GL_TRIANGLES, indicesSize/sizeof(unsigned int), GL_UNSIGNED_INT, 0);
+    vao->Unbind();
+
+    // ----- RENDER CUBE ------
+    // Animate the cube position (simple left-right movement)
+    static float direction = 1.0f; // 1 for right, -1 for left
+    static float speed = 1.0f;     // Units per second
+
+    // Update cube position
+    cubePosition.x += direction * speed * deltaTime;
+
+    // Reverse direction when reaching boundaries
+    if (cubePosition.x > 2.0f) {
+        direction = -1.0f;
+    }
+    else if (cubePosition.x < -2.0f) {
+        direction = 1.0f;
+    }
+
+    // Position the cube away from the pyramid
+    glm::vec3 renderPosition = cubePosition;
+    renderPosition.z = -3.0f;  // Place it in front of the pyramid
+    renderPosition.y = 1.0f;   // Raise it up a bit
+
+    // Ensure the cube is visibly different (make it larger)
+    glm::vec3 cubeScale(0.8f);
+
+    // Render the cube with its own position and scale
+    RenderCube(renderPosition, cubeScale);
 
     // Begin ImGui frame
     imguiManager->BeginFrame();
@@ -122,11 +157,15 @@ void OpenGLRendererWrapper::BeginFrame() {
     ImGui::Text("Hello from the OpenGLRendererWrapper!");
     ImGui::SliderFloat("Camera Speed", &camera->speed, 0.01f, 0.2f);
     ImGui::SliderFloat("Camera Sensitivity", &camera->sensitivity, 10.0f, 100.0f);
+    ImGui::SliderFloat("Cube Speed", &speed, 0.1f, 3.0f);
+    ImGui::Text("Cube Position: %.2f, %.2f, %.2f", renderPosition.x, renderPosition.y, renderPosition.z);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                 1000.0f / ImGui::GetIO().Framerate,
                 ImGui::GetIO().Framerate);
     ImGui::End();
 }
+
+
 
 void OpenGLRendererWrapper::EndFrame() {
     // Finish ImGui rendering
@@ -148,11 +187,95 @@ void OpenGLRendererWrapper::Shutdown() {
     if (ebo) ebo->Delete();
     if (shader) shader->Delete();
 
+
+    if (cubeVAO) cubeVAO->Delete();
+    if (cubeVBO) cubeVBO->Delete();
+    if (cubeEBO) cubeEBO->Delete();
+
     if (window) {
         glfwDestroyWindow(window);
         window = nullptr;
     }
     glfwTerminate();
+}
+
+void OpenGLRendererWrapper::CreateCube() {
+    // Define cube vertices (position and color)
+    static GLfloat cubeVertices[] = {
+        // Front face
+        -0.5f, -0.5f,  0.5f,     1.0f, 0.0f, 0.0f,  // Bottom-left
+         0.5f, -0.5f,  0.5f,     1.0f, 1.0f, 0.0f,  // Bottom-right
+         0.5f,  0.5f,  0.5f,     1.0f, 1.0f, 1.0f,  // Top-right
+        -0.5f,  0.5f,  0.5f,     1.0f, 0.0f, 1.0f,  // Top-left
+
+        // Back face
+        -0.5f, -0.5f, -0.5f,     0.0f, 0.0f, 1.0f,  // Bottom-left
+         0.5f, -0.5f, -0.5f,     0.0f, 1.0f, 1.0f,  // Bottom-right
+         0.5f,  0.5f, -0.5f,     0.0f, 1.0f, 0.0f,  // Top-right
+        -0.5f,  0.5f, -0.5f,     0.0f, 0.0f, 0.0f   // Top-left
+    };
+
+    // Define cube indices
+    static GLuint cubeIndices[] = {
+        // Front face
+        0, 1, 2,
+        2, 3, 0,
+        // Right face
+        1, 5, 6,
+        6, 2, 1,
+        // Back face
+        5, 4, 7,
+        7, 6, 5,
+        // Left face
+        4, 0, 3,
+        3, 7, 4,
+        // Top face
+        3, 2, 6,
+        6, 7, 3,
+        // Bottom face
+        4, 5, 1,
+        1, 0, 4
+    };
+
+    // Create buffers for the cube
+    cubeVAO = std::make_unique<VAO>();
+    cubeVAO->Bind();
+
+    cubeVBO = std::make_unique<VBO>(cubeVertices, sizeof(cubeVertices));
+    cubeEBO = std::make_unique<EBO>(cubeIndices, sizeof(cubeIndices));
+
+    cubeVAO->LinkAttrib(*cubeVBO.get(), 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+    cubeVAO->LinkAttrib(*cubeVBO.get(), 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    cubeVAO->Unbind();
+    cubeVBO->Unbind();
+    cubeEBO->Unbind();
+
+    // Initial position
+    cubePosition = glm::vec3(0.0f, 0.0f, 0.0f);
+}
+
+void OpenGLRendererWrapper::RenderCube(const glm::vec3& position, const glm::vec3& scale) {
+    if (!cubeVAO) {
+        CreateCube();
+    }
+
+    // Activate shader
+    shader->Activate();
+
+    // Use the camera matrix, but apply a transform to the cube's position
+    glm::mat4 viewMatrix = glm::translate(glm::mat4(1.0f), position);
+    viewMatrix = glm::scale(viewMatrix, scale);
+
+    // Set the camera matrix with the cube's position already factored in
+    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
+
+    // Switch to cube VAO
+    cubeVAO->Bind();
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    cubeVAO->Unbind();
+
+    LOG_GLERROR("Error in rendering cube: ")
 }
 
 } // namespace Common
