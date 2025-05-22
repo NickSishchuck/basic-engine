@@ -19,10 +19,15 @@ public:
     virtual void Shutdown() = 0;
     virtual GLFWwindow* GetWindow() const = 0;
 
-
+    // Cube rendering
     virtual void CreateCube() = 0;
     virtual void RenderCube(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f)) = 0;
 
+    // Floor rendering
+    virtual void CreateFloor() = 0;
+    virtual void RenderFloor(float size = 20.0f, int gridLines = 20) = 0;
+    virtual void SetFloorEnabled(bool enabled) = 0;
+    virtual bool IsFloorEnabled() const = 0;
 };
 
 } // namespace Common

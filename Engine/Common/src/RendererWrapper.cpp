@@ -7,11 +7,12 @@
 #include "../../../renderer/include/Camera.h"
 #include "../../../renderer/include/Logger.h"
 #include <iostream>
+#include <vector>
 
 namespace Engine {
 namespace Common {
 
-OpenGLRendererWrapper::OpenGLRendererWrapper() : window(nullptr) {
+OpenGLRendererWrapper::OpenGLRendererWrapper() : window(nullptr), floorEnabled(true), floorSize(20.0f), gridLineCount(20), autoUpdateFloor(true), lastFloorSize(20.0f), lastGridLineCount(20) {
     // Triangle vertices
     static GLfloat verticesData[] = {
         -0.5f,  0.0f,  0.5f,     1.0f, 0.0f, 0.0f,  // Lower left
@@ -69,7 +70,10 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
         glfwTerminate();
         return false;
     }
+
     CreateCube();
+    CreateFloor();
+
     // Setup shader
     shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
 
@@ -100,7 +104,6 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
     return true;
 }
 
-
 void OpenGLRendererWrapper::BeginFrame() {
     // Clear the screen
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -114,6 +117,11 @@ void OpenGLRendererWrapper::BeginFrame() {
 
     // Update camera
     camera->Inputs(window);
+
+    // ----- RENDER FLOOR ------
+    if (floorEnabled) {
+        RenderFloor(floorSize, gridLineCount);
+    }
 
     // ----- RENDER CUBE ------
     // Animate the cube position (left-right movement)
@@ -131,40 +139,90 @@ void OpenGLRendererWrapper::BeginFrame() {
         direction = 1.0f;
     }
 
-
     glm::vec3 renderPosition = cubePosition;
     renderPosition.z = -3.0f;
     renderPosition.y = 1.0f;
 
-
     glm::vec3 cubeScale(0.8f);
-
 
     RenderCube(renderPosition, cubeScale);
 
-
     imguiManager->BeginFrame();
-
 
     ImGui::Begin("Renderer Controls");
     ImGui::Text("Hello from the OpenGLRendererWrapper!");
+
+    // Floor controls
+    ImGui::Separator();
+    ImGui::Text("Floor Settings");
+    if (ImGui::Checkbox("Enable Floor", &floorEnabled)) {
+        // Floor enabled/disabled - no additional action needed
+    }
+    if (floorEnabled) {
+        ImGui::Checkbox("Auto-Update Floor", &autoUpdateFloor);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, floor updates instantly as you drag sliders");
+        }
+
+        bool settingsChanged = false;
+
+        if (ImGui::SliderFloat("Floor Size", &floorSize, 5.0f, 50.0f)) {
+            if (floorSize != lastFloorSize) {
+                settingsChanged = true;
+            }
+        }
+
+        if (ImGui::SliderInt("Grid Lines", &gridLineCount, 5, 50)) {
+            if (gridLineCount != lastGridLineCount) {
+                settingsChanged = true;
+            }
+        }
+
+        // Auto-update if enabled and settings changed
+        if (autoUpdateFloor && settingsChanged) {
+            CreateFloor();
+            lastFloorSize = floorSize;
+            lastGridLineCount = gridLineCount;
+        }
+
+        // Manual regenerate button
+        if (ImGui::Button("Regenerate Floor")) {
+            CreateFloor();
+            lastFloorSize = floorSize;
+            lastGridLineCount = gridLineCount;
+        }
+        if (!autoUpdateFloor) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Manual mode - use button to apply changes");
+        }
+    }
+
+    // Camera controls
+    ImGui::Separator();
+    ImGui::Text("Camera Settings");
     ImGui::SliderFloat("Camera Speed", &camera->speed, 0.01f, 0.2f);
     ImGui::SliderFloat("Camera Sensitivity", &camera->sensitivity, 10.0f, 100.0f);
+
+    // Cube controls
+    ImGui::Separator();
+    ImGui::Text("Cube Settings");
     ImGui::SliderFloat("Cube Speed", &speed, 0.1f, 3.0f);
     ImGui::Text("Cube Position: %.2f, %.2f, %.2f", renderPosition.x, renderPosition.y, renderPosition.z);
+
+    // Performance
+    ImGui::Separator();
+    ImGui::Text("Performance");
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                 1000.0f / ImGui::GetIO().Framerate,
                 ImGui::GetIO().Framerate);
     ImGui::End();
 }
 
-
-
 void OpenGLRendererWrapper::EndFrame() {
-
     imguiManager->EndFrame();
     imguiManager->Render();
-
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -180,10 +238,16 @@ void OpenGLRendererWrapper::Shutdown() {
     if (ebo) ebo->Delete();
     if (shader) shader->Delete();
 
-
     if (cubeVAO) cubeVAO->Delete();
     if (cubeVBO) cubeVBO->Delete();
     if (cubeEBO) cubeEBO->Delete();
+
+    if (floorVAO) floorVAO->Delete();
+    if (floorVBO) floorVBO->Delete();
+    if (floorEBO) floorEBO->Delete();
+
+    if (gridVAO) gridVAO->Delete();
+    if (gridVBO) gridVBO->Delete();
 
     if (window) {
         glfwDestroyWindow(window);
@@ -272,6 +336,133 @@ void OpenGLRendererWrapper::RenderCube(const glm::vec3& position, const glm::vec
     cubeVAO->Bind();
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
     cubeVAO->Unbind();
+}
+
+void OpenGLRendererWrapper::CreateFloor() {
+    CreateFloorPlane(floorSize);
+    CreateGridLines(floorSize, gridLineCount);
+}
+
+void OpenGLRendererWrapper::CreateFloorPlane(float size) {
+    // Create a large plane at y = 0
+    float halfSize = size / 2.0f;
+
+    GLfloat floorVertices[] = {
+        // Position                    // Color (dark gray)
+        -halfSize, 0.0f, -halfSize,    0.3f, 0.3f, 0.3f,  // Bottom-left
+         halfSize, 0.0f, -halfSize,    0.3f, 0.3f, 0.3f,  // Bottom-right
+         halfSize, 0.0f,  halfSize,    0.3f, 0.3f, 0.3f,  // Top-right
+        -halfSize, 0.0f,  halfSize,    0.3f, 0.3f, 0.3f   // Top-left
+    };
+
+    GLuint floorIndices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    // Create buffers for the floor
+    floorVAO = std::make_unique<VAO>();
+    floorVAO->Bind();
+
+    floorVBO = std::make_unique<VBO>(floorVertices, sizeof(floorVertices));
+    floorEBO = std::make_unique<EBO>(floorIndices, sizeof(floorIndices));
+
+    floorVAO->LinkAttrib(*floorVBO.get(), 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+    floorVAO->LinkAttrib(*floorVBO.get(), 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    floorVAO->Unbind();
+    floorVBO->Unbind();
+    floorEBO->Unbind();
+}
+
+void OpenGLRendererWrapper::CreateGridLines(float size, int gridLines) {
+    std::vector<GLfloat> gridVertices;
+    float halfSize = size / 2.0f;
+    float step = size / gridLines;
+
+    // Grid line color (light gray)
+    float r = 0.5f, g = 0.5f, b = 0.5f;
+
+    // Vertical lines (parallel to Z axis)
+    for (int i = 0; i <= gridLines; ++i) {
+        float x = -halfSize + i * step;
+
+        // Line start
+        gridVertices.push_back(x);
+        gridVertices.push_back(0.0f);
+        gridVertices.push_back(-halfSize);
+        gridVertices.push_back(r);
+        gridVertices.push_back(g);
+        gridVertices.push_back(b);
+
+        // Line end
+        gridVertices.push_back(x);
+        gridVertices.push_back(0.0f);
+        gridVertices.push_back(halfSize);
+        gridVertices.push_back(r);
+        gridVertices.push_back(g);
+        gridVertices.push_back(b);
+    }
+
+    // Horizontal lines (parallel to X axis)
+    for (int i = 0; i <= gridLines; ++i) {
+        float z = -halfSize + i * step;
+
+        // Line start
+        gridVertices.push_back(-halfSize);
+        gridVertices.push_back(0.0f);
+        gridVertices.push_back(z);
+        gridVertices.push_back(r);
+        gridVertices.push_back(g);
+        gridVertices.push_back(b);
+
+        // Line end
+        gridVertices.push_back(halfSize);
+        gridVertices.push_back(0.0f);
+        gridVertices.push_back(z);
+        gridVertices.push_back(r);
+        gridVertices.push_back(g);
+        gridVertices.push_back(b);
+    }
+
+    // Create VAO and VBO for grid lines
+    gridVAO = std::make_unique<VAO>();
+    gridVAO->Bind();
+
+    gridVBO = std::make_unique<VBO>(gridVertices.data(), gridVertices.size() * sizeof(GLfloat));
+
+    gridVAO->LinkAttrib(*gridVBO.get(), 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
+    gridVAO->LinkAttrib(*gridVBO.get(), 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    gridVAO->Unbind();
+    gridVBO->Unbind();
+}
+
+void OpenGLRendererWrapper::RenderFloor(float size, int gridLines) {
+    if (!floorVAO || !gridVAO) {
+        CreateFloor();
+    }
+
+    // Activate shader
+    shader->Activate();
+
+    // Set camera matrix
+    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
+
+    // Identity model matrix for floor (no transformation needed)
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    GLuint modelLoc = glGetUniformLocation(shader->ID, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+    // Render floor plane
+    floorVAO->Bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    floorVAO->Unbind();
+
+    // Render grid lines
+    gridVAO->Bind();
+    glDrawArrays(GL_LINES, 0, (gridLines + 1) * 4); // 2 points per line, (gridLines+1) lines in each direction
+    gridVAO->Unbind();
 }
 
 } // namespace Common

@@ -1,4 +1,3 @@
-
 #ifndef OPENGL_RENDERER_WRAPPER_H
 #define OPENGL_RENDERER_WRAPPER_H
 
@@ -34,6 +33,25 @@ private:
     std::unique_ptr<EBO> cubeEBO;
     glm::vec3 cubePosition;
 
+    // For floor rendering
+    std::unique_ptr<VAO> floorVAO;
+    std::unique_ptr<VBO> floorVBO;
+    std::unique_ptr<EBO> floorEBO;
+
+    // For grid lines
+    std::unique_ptr<VAO> gridVAO;
+    std::unique_ptr<VBO> gridVBO;
+
+    // Floor settings
+    bool floorEnabled;
+    float floorSize;
+    int gridLineCount;
+    bool autoUpdateFloor;
+
+    // For tracking changes
+    float lastFloorSize;
+    int lastGridLineCount;
+
     // Original vertices and indices from the renderer
     float* vertices;
     unsigned int* indices;
@@ -52,6 +70,15 @@ public:
 
     void CreateCube() override;
     void RenderCube(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f)) override;
+
+    void CreateFloor() override;
+    void RenderFloor(float size = 20.0f, int gridLines = 20) override;
+    void SetFloorEnabled(bool enabled) override { floorEnabled = enabled; }
+    bool IsFloorEnabled() const override { return floorEnabled; }
+
+private:
+    void CreateFloorPlane(float size);
+    void CreateGridLines(float size, int gridLines);
 };
 
 } // namespace Common
