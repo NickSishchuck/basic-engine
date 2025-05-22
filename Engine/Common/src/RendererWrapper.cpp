@@ -12,7 +12,7 @@ namespace Engine {
 namespace Common {
 
 OpenGLRendererWrapper::OpenGLRendererWrapper() : window(nullptr) {
-    // Triangle vertices - copied from original renderer
+    // Triangle vertices
     static GLfloat verticesData[] = {
         -0.5f,  0.0f,  0.5f,     1.0f, 0.0f, 0.0f,  // Lower left
         -0.5f,  0.0f, -0.5f,     0.0f, 1.0f, 0.0f,  // Upper left
@@ -115,13 +115,6 @@ void OpenGLRendererWrapper::BeginFrame() {
     // Update camera
     camera->Inputs(window);
 
-    // // ----- RENDER PYRAMID -----
-    // shader->Activate();
-    // camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
-    // vao->Bind();
-    // glDrawElements(GL_TRIANGLES, indicesSize/sizeof(unsigned int), GL_UNSIGNED_INT, 0);
-    // vao->Unbind();
-
     // ----- RENDER CUBE ------
     // Animate the cube position (left-right movement)
     static float direction = 1.0f; // 1 for right, -1 for left
@@ -138,21 +131,21 @@ void OpenGLRendererWrapper::BeginFrame() {
         direction = 1.0f;
     }
 
-    // Position the cube away from the pyramid
-    glm::vec3 renderPosition = cubePosition;
-    renderPosition.z = -3.0f;  // Place it in front of the pyramid
-    renderPosition.y = 1.0f;   // Raise it up a bit
 
-    // Ensure the cube is visibly different (make it larger)
+    glm::vec3 renderPosition = cubePosition;
+    renderPosition.z = -3.0f;
+    renderPosition.y = 1.0f;
+
+
     glm::vec3 cubeScale(0.8f);
 
-    // Render the cube with its own position and scale
+
     RenderCube(renderPosition, cubeScale);
 
-    // Begin ImGui frame
+
     imguiManager->BeginFrame();
 
-    // Create a simple ImGui window
+
     ImGui::Begin("Renderer Controls");
     ImGui::Text("Hello from the OpenGLRendererWrapper!");
     ImGui::SliderFloat("Camera Speed", &camera->speed, 0.01f, 0.2f);
@@ -168,11 +161,11 @@ void OpenGLRendererWrapper::BeginFrame() {
 
 
 void OpenGLRendererWrapper::EndFrame() {
-    // Finish ImGui rendering
+
     imguiManager->EndFrame();
     imguiManager->Render();
 
-    // Swap buffers
+
     glfwSwapBuffers(window);
     glfwPollEvents();
 }

@@ -1,10 +1,12 @@
 set(LOGIC_SOURCES
     src/Entity.cpp
+    src/TransformComponent.cpp
 )
 
 set(LOGIC_HEADERS
     include/Component.h
     include/Entity.h
+    include/TransformComponent.h
 )
 
 add_library(Logic STATIC ${LOGIC_SOURCES} ${LOGIC_HEADERS})
