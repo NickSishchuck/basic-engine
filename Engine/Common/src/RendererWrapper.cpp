@@ -60,6 +60,14 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
         return false;
     }
 
+
+    // Store window dimensions
+    windowWidth = width;
+    windowHeight = height;
+
+    // Create viewport framebuffer (start with default size)
+    viewportFramebuffer = std::make_unique<Framebuffer>(viewportWidth, viewportHeight);
+
     // Make the window's context current
     glfwMakeContextCurrent(window);
 
@@ -105,9 +113,15 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
 }
 
 void OpenGLRendererWrapper::BeginFrame() {
-    // Clear the screen
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    // Update window size
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    SetMainWindowSize(width, height);
+
+    // Clear the main framebuffer
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
     // Current time for animation
     static float lastFrameTime = glfwGetTime();
@@ -432,6 +446,43 @@ void OpenGLRendererWrapper::RenderFloor(float size, int gridLines) {
     gridVAO->Bind();
     glDrawArrays(GL_LINES, 0, (gridLines + 1) * 4); // 2 points per line, (gridLines+1) lines in each direction
     gridVAO->Unbind();
+}
+
+void OpenGLRendererWrapper::BeginViewportRender() {
+    isRenderingToViewport = true;
+    viewportFramebuffer->Bind();
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void OpenGLRendererWrapper::EndViewportRender() {
+    viewportFramebuffer->Unbind();
+    isRenderingToViewport = false;
+    // Restore main window viewport
+    glViewport(0, 0, windowWidth, windowHeight);
+}
+
+GLuint OpenGLRendererWrapper::GetViewportTexture() const {
+    return viewportFramebuffer ? viewportFramebuffer->GetTexture() : 0;
+}
+
+void OpenGLRendererWrapper::ResizeViewport(int width, int height) {
+    if (viewportFramebuffer && (width > 0 && height > 0)) {
+        viewportFramebuffer->Resize(width, height);
+        viewportWidth = width;
+        viewportHeight = height;
+
+        // Update camera aspect ratio
+        if (camera) {
+            camera->width = width;
+            camera->height = height;
+        }
+    }
+}
+
+void OpenGLRendererWrapper::SetMainWindowSize(int width, int height) {
+    windowWidth = width;
+    windowHeight = height;
 }
 
 } // namespace Common

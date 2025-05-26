@@ -2,6 +2,7 @@
 #define OPENGL_RENDERER_WRAPPER_H
 
 #include "RendererInterface.h"
+#include "../../../renderer/include/FrameBuffer.h"
 #include <memory>
 
 // Forward declarations for renderer components
@@ -28,12 +29,21 @@ class OpenGLRendererWrapper : public RendererInterface {
         std::unique_ptr<ImGuiManager> imguiManager;
         std::unique_ptr<Camera> camera;
 
-        // For cube rendering (keep these - used by RenderCube method)
+        // Viewport rendering
+        std::unique_ptr<Framebuffer> viewportFramebuffer;
+        bool isRenderingToViewport = false;
+        int viewportWidth = 800;
+        int viewportHeight = 600;
+
+        // For tracking main window size
+        int windowWidth;
+        int windowHeight;
+
+
+        // For cube rendering
         std::unique_ptr<VAO> cubeVAO;
         std::unique_ptr<VBO> cubeVBO;
         std::unique_ptr<EBO> cubeEBO;
-        // ❌ REMOVE THIS LINE - old hardcoded cube position
-        // glm::vec3 cubePosition;
 
         // For floor rendering
         std::unique_ptr<VAO> floorVAO;
@@ -77,6 +87,13 @@ public:
     void RenderFloor(float size = 20.0f, int gridLines = 20) override;
     void SetFloorEnabled(bool enabled) override { floorEnabled = enabled; }
     bool IsFloorEnabled() const override { return floorEnabled; }
+
+    // Viewport rendering methods
+    void BeginViewportRender();
+    void EndViewportRender();
+    GLuint GetViewportTexture() const;
+    void ResizeViewport(int width, int height);
+    void SetMainWindowSize(int width, int height);
 
 private:
     void CreateFloorPlane(float size);
