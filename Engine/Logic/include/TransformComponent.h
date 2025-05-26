@@ -8,6 +8,7 @@
 
 namespace Engine{
 namespace Logic{
+
 class TransformComponent : public Component{
 private:
     glm::vec3 position;
@@ -18,37 +19,44 @@ private:
     mutable bool isDirty = true;
 
 public:
-TransformComponent(const glm::vec3& pos = glm::vec3(0.0f),
-    const glm::vec3& rot = glm::vec3(0.0f),
-    const glm::vec3& scl = glm::vec3(1.0f));
+    TransformComponent(const glm::vec3& pos = glm::vec3(0.0f),
+                      const glm::vec3& rot = glm::vec3(0.0f),
+                      const glm::vec3& scl = glm::vec3(1.0f));
 
-// Component interface
-void Update(float deltaTime) override;
-std::string GetTypeName() const override { return "TransformComponent";}
-std::string GetDebugInfo() const override;
+    // Component interface
+    void Update(float deltaTime) override;
+    std::string GetTypeName() const override { return "TransformComponent"; }
+    std::string GetDebugInfo() const override;
 
-// Position
-void SetPosition(const glm::vec3& pos);
-const glm::vec3& GetPosition() const {return position;}
-void Translate(const glm::vec3& delta);
+    // Position
+    void SetPosition(const glm::vec3& pos);
+    const glm::vec3& GetPosition() const { return position; }
+    void Translate(const glm::vec3& delta);
 
-// Rotation
-void SetRotation(const glm::vec3& scl);
-void SetScale(float uniformScale);
-const glm::vec3& GetScale() const { return scale;}
+    // Rotation (in radians)
+    void SetRotation(const glm::vec3& rot);
+    const glm::vec3& GetRotation() const { return rotation; }
+    void Rotate(const glm::vec3& delta);
 
-const glm::mat4& GetTransformMatrix() const;
+    // Scale
+    void SetScale(const glm::vec3& scl);
+    void SetScale(float uniformScale);
+    const glm::vec3& GetScale() const { return scale; }
 
-//Direction vectors
-glm::vec3 GetForward() const;
-glm::vec3 GetRignt() const;
-glm::vec3 GetUp() const;
+    // Transform matrix
+    const glm::mat4& GetTransformMatrix() const;
+
+    // Direction vectors
+    glm::vec3 GetForward() const;
+    glm::vec3 GetRight() const;
+    glm::vec3 GetUp() const;
 
 private:
-void UpdateMatrix() const;
-void MarkDirty() {isDirty = true; }
+    void UpdateMatrix() const;
+    void MarkDirty() { isDirty = true; }
 };
-} // namespave Logic
-} //namespace Engine
+
+} // namespace Logic
+} // namespace Engine
 
 #endif

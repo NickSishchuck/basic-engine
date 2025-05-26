@@ -16,47 +16,49 @@ namespace Engine {
 namespace Common {
 
 class OpenGLRendererWrapper : public RendererInterface {
-private:
-    GLFWwindow* window;
 
-    // Store references to renderer components
-    std::unique_ptr<Shader> shader;
-    std::unique_ptr<VAO> vao;
-    std::unique_ptr<VBO> vbo;
-    std::unique_ptr<EBO> ebo;
-    std::unique_ptr<ImGuiManager> imguiManager;
-    std::unique_ptr<Camera> camera;
+    private:
+        GLFWwindow* window;
 
-    // For cube rendering
-    std::unique_ptr<VAO> cubeVAO;
-    std::unique_ptr<VBO> cubeVBO;
-    std::unique_ptr<EBO> cubeEBO;
-    glm::vec3 cubePosition;
+        // Store references to renderer components
+        std::unique_ptr<Shader> shader;
+        std::unique_ptr<VAO> vao;
+        std::unique_ptr<VBO> vbo;
+        std::unique_ptr<EBO> ebo;
+        std::unique_ptr<ImGuiManager> imguiManager;
+        std::unique_ptr<Camera> camera;
 
-    // For floor rendering
-    std::unique_ptr<VAO> floorVAO;
-    std::unique_ptr<VBO> floorVBO;
-    std::unique_ptr<EBO> floorEBO;
+        // For cube rendering (keep these - used by RenderCube method)
+        std::unique_ptr<VAO> cubeVAO;
+        std::unique_ptr<VBO> cubeVBO;
+        std::unique_ptr<EBO> cubeEBO;
+        // ❌ REMOVE THIS LINE - old hardcoded cube position
+        // glm::vec3 cubePosition;
 
-    // For grid lines
-    std::unique_ptr<VAO> gridVAO;
-    std::unique_ptr<VBO> gridVBO;
+        // For floor rendering
+        std::unique_ptr<VAO> floorVAO;
+        std::unique_ptr<VBO> floorVBO;
+        std::unique_ptr<EBO> floorEBO;
 
-    // Floor settings
-    bool floorEnabled;
-    float floorSize;
-    int gridLineCount;
-    bool autoUpdateFloor;
+        // For grid lines
+        std::unique_ptr<VAO> gridVAO;
+        std::unique_ptr<VBO> gridVBO;
 
-    // For tracking changes
-    float lastFloorSize;
-    int lastGridLineCount;
+        // Floor settings
+        bool floorEnabled;
+        float floorSize;
+        int gridLineCount;
+        bool autoUpdateFloor;
 
-    // Original vertices and indices from the renderer
-    float* vertices;
-    unsigned int* indices;
-    int verticesSize;
-    int indicesSize;
+        // For tracking changes
+        float lastFloorSize;
+        int lastGridLineCount;
+
+        // Original vertices and indices from the renderer
+        float* vertices;
+        unsigned int* indices;
+        int verticesSize;
+        int indicesSize;
 
 public:
     OpenGLRendererWrapper();

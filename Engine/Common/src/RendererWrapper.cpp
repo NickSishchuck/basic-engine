@@ -96,7 +96,7 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
     imguiManager->Initialize();
 
     // Setup camera
-    camera = std::make_unique<Camera>(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
+    camera = std::make_unique<Camera>(width, height, glm::vec3(0.0f, 3.0f, 10.0f));
 
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
@@ -122,30 +122,6 @@ void OpenGLRendererWrapper::BeginFrame() {
     if (floorEnabled) {
         RenderFloor(floorSize, gridLineCount);
     }
-
-    // ----- RENDER CUBE ------
-    // Animate the cube position (left-right movement)
-    static float direction = 1.0f; // 1 for right, -1 for left
-    static float speed = 1.0f;     // Units per second
-
-    // Update cube position
-    cubePosition.x += direction * speed * deltaTime;
-
-    // Reverse direction when reaching boundaries
-    if (cubePosition.x > 2.0f) {
-        direction = -1.0f;
-    }
-    else if (cubePosition.x < -2.0f) {
-        direction = 1.0f;
-    }
-
-    glm::vec3 renderPosition = cubePosition;
-    renderPosition.z = -3.0f;
-    renderPosition.y = 1.0f;
-
-    glm::vec3 cubeScale(0.8f);
-
-    RenderCube(renderPosition, cubeScale);
 
     imguiManager->BeginFrame();
 
@@ -205,11 +181,6 @@ void OpenGLRendererWrapper::BeginFrame() {
     ImGui::SliderFloat("Camera Speed", &camera->speed, 0.01f, 0.2f);
     ImGui::SliderFloat("Camera Sensitivity", &camera->sensitivity, 10.0f, 100.0f);
 
-    // Cube controls
-    ImGui::Separator();
-    ImGui::Text("Cube Settings");
-    ImGui::SliderFloat("Cube Speed", &speed, 0.1f, 3.0f);
-    ImGui::Text("Cube Position: %.2f, %.2f, %.2f", renderPosition.x, renderPosition.y, renderPosition.z);
 
     // Performance
     ImGui::Separator();
@@ -308,8 +279,6 @@ void OpenGLRendererWrapper::CreateCube() {
     cubeVBO->Unbind();
     cubeEBO->Unbind();
 
-    // Initial position
-    cubePosition = glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
 void OpenGLRendererWrapper::RenderCube(const glm::vec3& position, const glm::vec3& scale) {
