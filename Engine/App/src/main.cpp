@@ -16,16 +16,6 @@ enum class AppState {
 
 class PlaneEngineApp {
 private:
-
-    // Docking and viewport
-    bool showViewport = true;
-    bool showSceneHierarchy = true;
-    bool showInspector = true;
-    bool showConsole = true;
-    ImVec2 lastViewportSize = ImVec2(800, 600);
-
-    // Selected entity for inspector
-    std::shared_ptr<Engine::Logic::Entity> selectedEntity = nullptr;
     Engine::Common::OpenGLRendererWrapper renderer;
     Engine::Logic::SceneManager sceneManager;
 
@@ -162,230 +152,19 @@ private:
         }
     }
 
-    void PlaneEngineApp::Render() {
-        // First, render the 3D scene to the framebuffer
-        renderer.BeginViewportRender();
-        RenderCurrentScene();
-        renderer.EndViewportRender();
-
-        // Now render the main window with ImGui
+    void Render() {
         renderer.BeginFrame();
 
-        // Create the dockspace
-        CreateDockSpace();
-
-        // Render all UI panels
-        if (showViewport) RenderViewport();
-        if (showSceneHierarchy) RenderSceneHierarchy();
-        if (showInspector) RenderInspector();
-        if (showConsole) RenderConsole();
-
-        // Render any floating windows (main menu, etc.)
-        if (showMainMenu) {
-            RenderMainMenu();
+        // Render current scene
+        if (currentState != AppState::MAIN_MENU) {
+            RenderCurrentScene();
         }
+
+        // Render UI
+        RenderUI();
 
         renderer.EndFrame();
     }
-
-    void PlaneEngineApp::CreateDockSpace() {
-        static bool dockspaceOpen = true;
-        static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-                        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("DockSpace", &dockspaceOpen, window_flags);
-        ImGui::PopStyleVar(3);
-
-        // Submit the DockSpace
-        ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-
-        // Menu Bar
-        if (ImGui::BeginMenuBar()) {
-            if (ImGui::BeginMenu("File")) {
-                if (ImGui::MenuItem("Exit")) {
-                    RequestStateChange(AppState::EXITING);
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("View")) {
-                ImGui::MenuItem("Viewport", nullptr, &showViewport);
-                ImGui::MenuItem("Scene Hierarchy", nullptr, &showSceneHierarchy);
-                ImGui::MenuItem("Inspector", nullptr, &showInspector);
-                ImGui::MenuItem("Console", nullptr, &showConsole);
-                ImGui::Separator();
-                ImGui::MenuItem("Main Menu", nullptr, &showMainMenu);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-
-        ImGui::End();
-    }
-
-    // Add the viewport rendering method:
-    void PlaneEngineApp::RenderViewport() {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        if (ImGui::Begin("Viewport", &showViewport)) {
-            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-
-            // Check if viewport size changed
-            if (viewportSize.x != lastViewportSize.x || viewportSize.y != lastViewportSize.y) {
-                if (viewportSize.x > 0 && viewportSize.y > 0) {
-                    renderer.ResizeViewport((int)viewportSize.x, (int)viewportSize.y);
-                    lastViewportSize = viewportSize;
-                }
-            }
-
-            // Display the rendered texture
-            ImGui::Image(
-                (void*)(intptr_t)renderer.GetViewportTexture(),
-                viewportSize,
-                ImVec2(0, 1),  // UV0 (flip Y)
-                ImVec2(1, 0)   // UV1 (flip Y)
-            );
-
-            // TODO: Handle viewport-specific input when focused
-            // if (ImGui::IsWindowFocused() && ImGui::IsWindowHovered()) {
-            //     // Handle camera input here
-            // }
-        }
-        ImGui::End();
-        ImGui::PopStyleVar();
-    }
-
-    // Add the scene hierarchy panel:
-    void PlaneEngineApp::RenderSceneHierarchy() {
-        if (ImGui::Begin("Scene Hierarchy", &showSceneHierarchy)) {
-            auto currentScene = sceneManager.GetCurrentScene();
-            if (currentScene) {
-                ImGui::Text("Scene: %s", currentScene->GetName().c_str());
-                ImGui::Separator();
-
-                for (const auto& entity : currentScene->GetEntities()) {
-                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-                                             ImGuiTreeNodeFlags_OpenOnDoubleClick;
-
-                    if (selectedEntity == entity) {
-                        flags |= ImGuiTreeNodeFlags_Selected;
-                    }
-
-                    bool nodeOpen = ImGui::TreeNodeEx(
-                        (void*)(intptr_t)entity->GetID(),
-                        flags,
-                        "%s", entity->GetName().c_str()
-                    );
-
-                    if (ImGui::IsItemClicked()) {
-                        selectedEntity = entity;
-                    }
-
-                    if (nodeOpen) {
-                        for (const auto& component : entity->GetAllComponents()) {
-                            ImGui::BulletText("%s", component->GetTypeName().c_str());
-                        }
-                        ImGui::TreePop();
-                    }
-                }
-            } else {
-                ImGui::Text("No scene loaded");
-            }
-        }
-        ImGui::End();
-    }
-
-    // Add the inspector panel:
-    void PlaneEngineApp::RenderInspector() {
-        if (ImGui::Begin("Inspector", &showInspector)) {
-            if (selectedEntity) {
-                ImGui::Text("Entity: %s", selectedEntity->GetName().c_str());
-                ImGui::Text("ID: %d", selectedEntity->GetID());
-                ImGui::Separator();
-
-                // Transform component
-                auto transform = selectedEntity->GetComponent<Engine::Logic::TransformComponent>();
-                if (transform && ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-                    glm::vec3 pos = transform->GetPosition();
-                    if (ImGui::DragFloat3("Position", &pos.x, 0.1f)) {
-                        transform->SetPosition(pos);
-                    }
-
-                    glm::vec3 rot = transform->GetRotation();
-                    if (ImGui::DragFloat3("Rotation", &rot.x, 0.01f)) {
-                        transform->SetRotation(rot);
-                    }
-
-                    glm::vec3 scale = transform->GetScale();
-                    if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 5.0f)) {
-                        transform->SetScale(scale);
-                    }
-                }
-
-                // Render component
-                auto render = selectedEntity->GetComponent<Engine::Logic::RenderComponent>();
-                if (render && ImGui::CollapsingHeader("Render", ImGuiTreeNodeFlags_DefaultOpen)) {
-                    bool visible = render->IsVisible();
-                    if (ImGui::Checkbox("Visible", &visible)) {
-                        render->SetVisible(visible);
-                    }
-
-                    // Color picker could go here if you add color support
-                }
-
-                // Physics component (if in physics scene)
-                auto physics = selectedEntity->GetComponent<Engine::Logic::SimplePhysicsComponent>();
-                if (physics && ImGui::CollapsingHeader("Physics", ImGuiTreeNodeFlags_DefaultOpen)) {
-                    glm::vec3 velocity = physics->GetVelocity();
-                    ImGui::Text("Velocity: (%.2f, %.2f, %.2f)", velocity.x, velocity.y, velocity.z);
-                    ImGui::Text("Mass: %.2f", physics->GetMass());
-
-                    if (ImGui::Button("Apply Upward Force")) {
-                        physics->ApplyImpulse(glm::vec3(0.0f, 5.0f, 0.0f));
-                    }
-                }
-            } else {
-                ImGui::Text("No entity selected");
-            }
-        }
-        ImGui::End();
-    }
-
-    // Add the console panel:
-    void PlaneEngineApp::RenderConsole() {
-        if (ImGui::Begin("Console", &showConsole)) {
-            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-            ImGui::Text("Frame Time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
-            ImGui::Separator();
-
-            if (ImGui::Button("Clear")) {
-                // TODO: Clear console log
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Copy")) {
-                // TODO: Copy console contents
-            }
-
-            ImGui::Separator();
-
-            // TODO: Add actual console/log output here
-            ImGui::TextWrapped("Console output will appear here...");
-
-            // You could integrate with your Logger class here
-        }
-        ImGui::End();
-    }
-
 
     void RenderCurrentScene() {
         auto currentScene = sceneManager.GetCurrentScene();
