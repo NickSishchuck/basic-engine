@@ -82,6 +82,8 @@ public:
 
     void CreateCube() override;
     void RenderCube(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f)) override;
+    void RenderCube(const glm::mat4& transformMatrix) override;
+
 
     void CreateFloor() override;
     void RenderFloor(float size = 20.0f, int gridLines = 20) override;

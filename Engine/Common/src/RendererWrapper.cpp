@@ -391,6 +391,27 @@ void OpenGLRendererWrapper::RenderCube(const glm::vec3& position, const glm::vec
     cubeVAO->Unbind();
 }
 
+void OpenGLRendererWrapper::RenderCube(const glm::mat4& transformMatrix) {
+    if (!cubeVAO) {
+        CreateCube();
+    }
+
+    // Activate shader
+    shader->Activate();
+
+    // Set the camera matrix
+    camera->Matrix(45.0f, 0.1f, 100.0f, *shader.get(), "camMatrix");
+
+    // Use the provided transformation matrix directly
+    GLuint modelLoc = glGetUniformLocation(shader->ID, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(transformMatrix));
+
+    // Switch to cube VAO and render
+    cubeVAO->Bind();
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    cubeVAO->Unbind();
+}
+
 void OpenGLRendererWrapper::CreateFloor() {
     CreateFloorPlane(floorSize);
     CreateGridLines(floorSize, gridLineCount);

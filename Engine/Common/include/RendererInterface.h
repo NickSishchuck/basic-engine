@@ -1,3 +1,4 @@
+// In Engine/Common/include/RendererInterface.h
 #ifndef RENDERER_INTERFACE_H
 #define RENDERER_INTERFACE_H
 
@@ -19,9 +20,10 @@ public:
     virtual void Shutdown() = 0;
     virtual GLFWwindow* GetWindow() const = 0;
 
-    // Cube rendering
+    // Cube rendering - updated to support full transformation matrix
     virtual void CreateCube() = 0;
     virtual void RenderCube(const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f)) = 0;
+    virtual void RenderCube(const glm::mat4& transformMatrix) = 0;  // New method
 
     // Floor rendering
     virtual void CreateFloor() = 0;

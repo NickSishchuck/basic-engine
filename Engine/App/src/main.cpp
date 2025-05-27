@@ -179,7 +179,8 @@ private:
 
             if (transform && renderComp && renderComp->IsVisible()) {
                 if (renderComp->GetPrimitiveType() == Engine::Logic::PrimitiveType::CUBE) {
-                    renderer.RenderCube(transform->GetPosition(), transform->GetScale());
+                    // Use the complete transformation matrix instead of just position and scale
+                    renderer.RenderCube(transform->GetTransformMatrix());
                 }
             }
         }
