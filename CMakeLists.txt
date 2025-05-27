@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(PlaneEngine VERSION 0.1.0)
+project(BasicEngine VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -78,7 +78,7 @@ add_subdirectory(Engine/App)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/logs)
 
 # Print build configuration
-message(STATUS "=== PlaneEngine Build Configuration ===")
+message(STATUS "=== BasicEngine Build Configuration ===")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 if(BUILD_FOR_WINDOWS)

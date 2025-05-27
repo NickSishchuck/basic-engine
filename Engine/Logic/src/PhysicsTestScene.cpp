@@ -153,19 +153,41 @@ void PhysicsTestScene::Update(float deltaTime) {
 void PhysicsTestScene::Reset() {
     std::cout << "Resetting Physics Test Scene..." << std::endl;
 
-    // Reset all entities to their initial states
+    // Clear the falling cubes vector first to remove any shared_ptr references
+    fallingCubes.clear();
+
+    // Collect IDs of random cubes to remove
+    std::vector<int> randomCubeIds;
     for (const auto& entity : scene->GetEntities()) {
         if (!entity) continue;
 
+        const std::string& name = entity->GetName();
+        if (name.find("Random Cube") == 0) {
+            randomCubeIds.push_back(entity->GetID());
+        }
+    }
+
+    // Remove all random cubes from the scene
+    for (int cubeId : randomCubeIds) {
+        scene->RemoveEntity(cubeId);
+    }
+
+    std::cout << "Removed " << randomCubeIds.size() << " random cubes" << std::endl;
+
+    // Reset all remaining entities to their initial states
+    for (const auto& entity : scene->GetEntities()) {
+        if (!entity) continue;
+
+        // Reset physics velocity
         auto physics = entity->GetComponent<SimplePhysicsComponent>();
         if (physics) {
             physics->SetVelocity(glm::vec3(0.0f));
         }
 
+        // Reset transform position
         auto transform = entity->GetComponent<TransformComponent>();
         if (!transform) continue;
 
-        // Reset to initial positions based on entity name
         const std::string& name = entity->GetName();
         if (name == "Bouncing Ball") {
             transform->SetPosition(glm::vec3(0.0f, 5.0f, -3.0f));

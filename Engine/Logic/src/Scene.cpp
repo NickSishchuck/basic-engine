@@ -22,14 +22,22 @@ std::shared_ptr<Entity> Scene::CreateEntity(int id, const std::string& entityNam
 }
 
 void Scene::RemoveEntity(int entityId) {
-    auto it = std::remove_if(entities.begin(), entities.end(),
-        [entityId](const std::shared_ptr<Entity>& entity) {
-            return entity->GetID() == entityId;
-        });
+    auto it = std::find_if(entities.begin(), entities.end(),
+    [entityId](const std::shared_ptr<Entity>& entity) {
+    return entity && entity->GetID() == entityId;
+    });
 
     if (it != entities.end()) {
-        (*it)->Destroy(); // Clean up the entity
-        entities.erase(it, entities.end());
+        // Store the entity to destroy it after removal
+        auto entityToDestroy = *it;
+
+        // Remove from vector first
+        entities.erase(it);
+
+        // Then destroy the entity
+        if (entityToDestroy) {
+            entityToDestroy->Destroy();
+        }
     }
 }
 

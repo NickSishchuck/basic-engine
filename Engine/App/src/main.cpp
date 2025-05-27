@@ -14,7 +14,7 @@ enum class AppState {
     EXITING
 };
 
-class PlaneEngineApp {
+class BasicEngineApp {
 private:
     Engine::Common::OpenGLRendererWrapper renderer;
     Engine::Logic::SceneManager sceneManager;
@@ -38,7 +38,7 @@ private:
 
 public:
     bool Initialize() {
-        if (!renderer.Initialize(1920, 1080, "PlaneEngine - Scene Manager Demo")) {
+        if (!renderer.Initialize(1920, 1080, "BasicEngine - Scene Manager Demo")) {
             std::cerr << "Failed to initialize renderer" << std::endl;
             return false;
         }
@@ -51,7 +51,7 @@ public:
         sceneManager.RegisterScene("Demo", demoScene->GetScene());
         sceneManager.RegisterScene("Physics Test", physicsScene->GetScene());
 
-        std::cout << "PlaneEngine initialized successfully!" << std::endl;
+        std::cout << "BasicEngine initialized successfully!" << std::endl;
         sceneManager.PrintSceneList();
 
         return true;
@@ -210,11 +210,11 @@ private:
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
-        if (ImGui::Begin("PlaneEngine Main Menu", nullptr, flags)) {
+        if (ImGui::Begin("BasicEngine Main Menu", nullptr, flags)) {
             // Title
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]); // Use default font but bigger
-            ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("PlaneEngine").x) * 0.5f);
-            ImGui::Text("PlaneEngine");
+            ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("BasicEngine").x) * 0.5f);
+            ImGui::Text("BasicEngine");
             ImGui::PopFont();
 
             ImGui::Separator();
@@ -416,7 +416,7 @@ private:
 };
 
 int main() {
-    PlaneEngineApp app;
+    BasicEngineApp app;
 
     if (!app.Initialize()) {
         return -1;

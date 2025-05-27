@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PlaneEngine Multi-platform Build Script
+# BasicEngine Multi-platform Build Script
 
 set -e
 
@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR"
 
 show_help() {
     echo "Usage: $0 [OPTION]"
-    echo "Build PlaneEngine for different platforms"
+    echo "Build BasicEngine for different platforms"
     echo ""
     echo "Options:"
     echo "  linux     Build for Linux (default)"
@@ -44,7 +44,7 @@ build_linux() {
     make -j$(nproc)  # Or just 'make' for single-threaded build
 
     echo "✅ Linux build completed!"
-    echo "   Executable: build/build-linux/Engine/App/PlaneApp"
+    echo "   Executable: build/build-linux/Engine/App/BasicApp"
     cd ../..
 }
 
@@ -59,7 +59,7 @@ build_linux_debug() {
     make -j$(nproc)  # Or just 'make' for single-threaded build
 
     echo "✅ Linux build completed!"
-    echo "   Executable: build/build-linux/Engine/App/PlaneApp"
+    echo "   Executable: build/build-linux/Engine/App/BasicApp"
     cd ../..
 }
 
@@ -93,11 +93,11 @@ build_windows() {
     make -j$(nproc)
 
     echo "✅ Windows build completed!"
-    echo "   Executable: build/build-windows/Engine/App/PlaneApp.exe"
+    echo "   Executable: build/build-windows/Engine/App/BasicApp.exe"
 
     # Check if binary was created successfully
-    if [ -f "Engine/App/PlaneApp.exe" ]; then
-        echo "   File info: $(file Engine/App/PlaneApp.exe)"
+    if [ -f "Engine/App/BasicApp.exe" ]; then
+        echo "   File info: $(file Engine/App/BasicApp.exe)"
     fi
 
     cd ../..

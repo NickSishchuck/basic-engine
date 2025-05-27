@@ -3,4 +3,4 @@
 echo "Running..."
 
 cd build/build-linux/Engine/App/
-./PlaneApp
+./BasicApp

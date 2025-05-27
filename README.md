@@ -1,8 +1,8 @@
-# PlaneEngine
+# BasicEngine
 
 A modular C++ engine built with OpenGL, featuring an Entity-Component System (ECS) architecture and real-time 3D rendering capabilities.
 
-![PlaneEngine Demo](https://github.com/user-attachments/assets/ee85d7da-6996-430b-b825-a1198613d134)
+![BasicEngine Demo](https://github.com/user-attachments/assets/ee85d7da-6996-430b-b825-a1198613d134)
 
 ## Features
 
@@ -18,7 +18,7 @@ A modular C++ engine built with OpenGL, featuring an Entity-Component System (EC
 ## Architecture
 
 ```
-PlaneEngine/
+BasicEngine/
 ├── Engine/
 │   ├── App/           # Application layer and main entry point
 │   ├── Common/        # Shared utilities and renderer wrapper
@@ -54,7 +54,7 @@ PlaneEngine/
 1. **Clone with submodules**:
    ```bash
    git clone --recurse-submodules https://github.com/NickSishchuck/plane-engine
-   cd PlaneEngine
+   cd BasicEngine
    ```
 
    If you already cloned without submodules:
@@ -73,7 +73,7 @@ PlaneEngine/
 
 3. **Run the application**:
    ```bash
-   ./Engine/App/PlaneApp
+   ./Engine/App/BasicApp
    ```
 
 ## Usage

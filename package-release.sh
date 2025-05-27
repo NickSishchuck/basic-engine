@@ -1,17 +1,17 @@
 #!/bin/bash
-# Package PlaneEngine Windows Release
+# Package BasicEngine Windows Release
 
 set -e
 
 VERSION="v0.1.0"
-RELEASE_NAME="PlaneEngine-Windows-${VERSION}"
+RELEASE_NAME="BasicEngine-Windows-${VERSION}"
 BUILD_DIR="build/build-windows"
 PACKAGE_DIR="release/${RELEASE_NAME}"
 
 echo "📦 Creating Windows release package: ${RELEASE_NAME}"
 
 # Check if Windows build exists
-if [ ! -f "${BUILD_DIR}/Engine/App/PlaneApp.exe" ]; then
+if [ ! -f "${BUILD_DIR}/Engine/App/BasicApp.exe" ]; then
     echo "❌ Windows build not found. Run './build.sh windows' first!"
     exit 1
 fi
@@ -23,8 +23,8 @@ mkdir -p "${PACKAGE_DIR}"
 echo "📋 Copying files..."
 
 # 1. Main executable
-echo "  ✓ PlaneApp.exe"
-cp "${BUILD_DIR}/Engine/App/PlaneApp.exe" "${PACKAGE_DIR}/"
+echo "  ✓ BasicApp.exe"
+cp "${BUILD_DIR}/Engine/App/BasicApp.exe" "${PACKAGE_DIR}/"
 
 # 2. Shaders (essential for rendering)
 if [ -d "${BUILD_DIR}/Engine/App/shaders" ]; then
@@ -38,7 +38,7 @@ fi
 # 3. Create README for Windows users
 echo "  ✓ README-Windows.txt"
 cat > "${PACKAGE_DIR}/README-Windows.txt" << 'EOF'
-# PlaneEngine - Windows Release
+# BasicEngine - Windows Release
 
 ## System Requirements
 - Windows 10/11 (64-bit)
@@ -47,7 +47,7 @@ cat > "${PACKAGE_DIR}/README-Windows.txt" << 'EOF'
 
 ## How to Run
 1. Extract all files to a folder
-2. Double-click PlaneApp.exe to start
+2. Double-click BasicApp.exe to start
 3. Use the controls below to navigate
 
 ## Controls
@@ -82,7 +82,7 @@ cat > "${PACKAGE_DIR}/README-Windows.txt" << 'EOF'
 - Architecture: Entity-Component System (ECS)
 - Renderer: Custom OpenGL renderer with real-time debugging
 
-For more information, visit: https://github.com/YourUsername/PlaneEngine
+For more information, visit: https://github.com/NickSishchuck/BasicEngine
 EOF
 
 # 4. Create quick start guide
@@ -92,10 +92,10 @@ QUICK START GUIDE
 ================
 
 1. Make sure all files are in the same folder:
-   - PlaneApp.exe
+   - BasicApp.exe
    - shaders/ (folder)
 
-2. Double-click PlaneApp.exe
+2. Double-click BasicApp.exe
 
 3. You should see a 3D scene with:
    - A moving colorful cube
@@ -114,7 +114,7 @@ EOF
 echo "🔍 Checking for required DLLs..."
 REQUIRED_DLLS=""
 if command -v x86_64-w64-mingw32-objdump &> /dev/null; then
-    DLLS=$(x86_64-w64-mingw32-objdump -p "${BUILD_DIR}/Engine/App/PlaneApp.exe" | grep "DLL Name:" | awk '{print $3}' | grep -v "KERNEL32.dll\|USER32.dll\|GDI32.dll\|msvcrt.dll\|OPENGL32.dll\|GLU32.dll" || true)
+    DLLS=$(x86_64-w64-mingw32-objdump -p "${BUILD_DIR}/Engine/App/BasicApp.exe" | grep "DLL Name:" | awk '{print $3}' | grep -v "KERNEL32.dll\|USER32.dll\|GDI32.dll\|msvcrt.dll\|OPENGL32.dll\|GLU32.dll" || true)
 
     if [ -n "$DLLS" ]; then
         echo "  ⚠️  Additional DLLs may be required:"
@@ -140,7 +140,7 @@ PlaneEngine Windows Release Files
 =================================
 
 EXECUTABLE:
-  PlaneApp.exe                 - Main application
+  BasicApp.exe                 - Main application
 
 ESSENTIAL FILES:
   shaders/                     - OpenGL shader files (required)
