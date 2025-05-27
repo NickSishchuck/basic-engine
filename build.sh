@@ -35,36 +35,39 @@ check_mingw() {
 
 build_linux() {
     echo "🐧 Building for Linux..."
+    cd build
     rm -rf build-linux
     mkdir build-linux
     cd build-linux
 
-    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake ../.. -DCMAKE_BUILD_TYPE=Release
     make -j$(nproc)  # Or just 'make' for single-threaded build
 
     echo "✅ Linux build completed!"
-    echo "   Executable: build-linux/Engine/App/PlaneApp"
-    cd ..
+    echo "   Executable: build/build-linux/Engine/App/PlaneApp"
+    cd ../..
 }
 
 build_linux_debug() {
     echo "🐧 Building for Linux..."
+    cd build
     rm -rf build-linux
     mkdir build-linux
     cd build-linux
 
-    cmake ..
+    cmake ../..
     make -j$(nproc)  # Or just 'make' for single-threaded build
 
     echo "✅ Linux build completed!"
-    echo "   Executable: build-linux/Engine/App/PlaneApp"
-    cd ..
+    echo "   Executable: build/build-linux/Engine/App/PlaneApp"
+    cd ../..
 }
 
 build_windows() {
     echo "🪟 Building for Windows..."
     check_mingw
 
+    cd build
     rm -rf build-windows
     mkdir build-windows
     cd build-windows
@@ -77,10 +80,10 @@ build_windows() {
     fi
 
     if [ -n "$TOOLCHAIN_FILE" ]; then
-        cmake .. -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
+        cmake ../.. -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
                  -DCMAKE_BUILD_TYPE=Release
     else
-        cmake .. -DBUILD_FOR_WINDOWS=ON \
+        cmake ../.. -DBUILD_FOR_WINDOWS=ON \
                  -DCMAKE_SYSTEM_NAME=Windows \
                  -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
                  -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
@@ -90,20 +93,22 @@ build_windows() {
     make -j$(nproc)
 
     echo "✅ Windows build completed!"
-    echo "   Executable: build-windows/Engine/App/PlaneApp.exe"
+    echo "   Executable: build/build-windows/Engine/App/PlaneApp.exe"
 
     # Check if binary was created successfully
     if [ -f "Engine/App/PlaneApp.exe" ]; then
         echo "   File info: $(file Engine/App/PlaneApp.exe)"
     fi
 
-    cd ..
+    cd ../..
 }
 
 clean_builds() {
     echo "🧹 Cleaning build directories..."
+    cd build
     rm -rf build-linux build-windows
     echo "✅ Clean completed!"
+    cd ..
 }
 
 # Main script logic

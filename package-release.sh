@@ -5,7 +5,7 @@ set -e
 
 VERSION="v0.1.0"
 RELEASE_NAME="PlaneEngine-Windows-${VERSION}"
-BUILD_DIR="build-windows"
+BUILD_DIR="build/build-windows"
 PACKAGE_DIR="release/${RELEASE_NAME}"
 
 echo "📦 Creating Windows release package: ${RELEASE_NAME}"
