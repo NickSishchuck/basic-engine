@@ -2,7 +2,7 @@
 
 A modular C++ engine built with OpenGL, featuring an Entity-Component System (ECS) architecture and real-time 3D rendering capabilities.
 
-![BasicEngine Demo](https://github.com/user-attachments/assets/ee85d7da-6996-430b-b825-a1198613d134)
+![BasicEngine Demo](https://github.com/user-attachments/assets/36247493-b3ef-4d7f-8cf6-ecc260bd7849)
 
 ## Features
 
