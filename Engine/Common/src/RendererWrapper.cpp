@@ -12,40 +12,74 @@
 namespace Engine {
 namespace Common {
 
-OpenGLRendererWrapper::OpenGLRendererWrapper() : window(nullptr), floorEnabled(true), floorSize(20.0f), gridLineCount(20), autoUpdateFloor(true), lastFloorSize(20.0f), lastGridLineCount(20) {
-    // Triangle vertices
-    static GLfloat verticesData[] = {
-        -0.5f,  0.0f,  0.5f,     1.0f, 0.0f, 0.0f,  // Lower left
-        -0.5f,  0.0f, -0.5f,     0.0f, 1.0f, 0.0f,  // Upper left
-         0.5f,  0.0f, -0.5f,     0.0f, 0.0f, 1.0f,  // Upper right
-         0.5f,  0.0f,  0.5f,     1.0f, 1.0f, 1.0f,  // Lower right
-         0.0f,  0.8f,  0.0f,     1.0f, 1.0f, 0.0f   // Top
-    };
-    vertices = verticesData;
-    verticesSize = sizeof(verticesData);
+    OpenGLRendererWrapper::OpenGLRendererWrapper() :
+        window(nullptr),
+        floorEnabled(true),
+        floorSize(20.0f),
+        gridLineCount(20),
+        autoUpdateFloor(true),
+        lastFloorSize(20.0f),
+        lastGridLineCount(20),
+        vertices(nullptr),
+        indices(nullptr),
+        verticesSize(0),
+        indicesSize(0),
+        windowWidth(800),
+        windowHeight(600),
+        viewportWidth(800),
+        viewportHeight(600),
+        isRenderingToViewport(false) {
 
-    static GLuint indicesData[] = {
-        0, 1, 2,
-        0, 2, 3,
-        0, 1, 4,
-        1, 2, 4,
-        2, 3, 4,
-        3, 0, 4
-    };
-    indices = indicesData;
-    indicesSize = sizeof(indicesData);
-}
+        std::cout << "DEBUG: OpenGLRendererWrapper constructor called" << std::endl;
 
-OpenGLRendererWrapper::~OpenGLRendererWrapper() {
-    Shutdown();
-}
+        // Triangle vertices - allocate on heap instead of using static
+        verticesSize = 30 * sizeof(GLfloat);  // 5 vertices * 6 components each
+        vertices = new float[30] {
+            -0.5f,  0.0f,  0.5f,     1.0f, 0.0f, 0.0f,  // Lower left
+            -0.5f,  0.0f, -0.5f,     0.0f, 1.0f, 0.0f,  // Upper left
+             0.5f,  0.0f, -0.5f,     0.0f, 0.0f, 1.0f,  // Upper right
+             0.5f,  0.0f,  0.5f,     1.0f, 1.0f, 1.0f,  // Lower right
+             0.0f,  0.8f,  0.0f,     1.0f, 1.0f, 0.0f   // Top
+        };
+
+        indicesSize = 18 * sizeof(GLuint);  // 6 triangles * 3 vertices each
+        indices = new unsigned int[18] {
+            0, 1, 2,
+            0, 2, 3,
+            0, 1, 4,
+            1, 2, 4,
+            2, 3, 4,
+            3, 0, 4
+        };
+
+        std::cout << "DEBUG: OpenGLRendererWrapper constructor completed" << std::endl;
+    }
+
+    OpenGLRendererWrapper::~OpenGLRendererWrapper() {
+        std::cout << "DEBUG: OpenGLRendererWrapper destructor called" << std::endl;
+
+        // Clean up dynamically allocated arrays
+        if (vertices) {
+            delete[] vertices;
+            vertices = nullptr;
+        }
+        if (indices) {
+            delete[] indices;
+            indices = nullptr;
+        }
+
+        Shutdown();
+    }
 
 bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title) {
+    std::cout << "DEBUG: Starting Initialize..." << std::endl;
+
     // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return false;
     }
+    std::cout << "DEBUG: GLFW initialized" << std::endl;
 
     // Set OpenGL version and profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -53,23 +87,22 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
+    std::cout << "DEBUG: Creating window..." << std::endl;
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
     }
-
+    std::cout << "DEBUG: Window created" << std::endl;
 
     // Store window dimensions
     windowWidth = width;
     windowHeight = height;
 
-    // Create viewport framebuffer (start with default size)
-    viewportFramebuffer = std::make_unique<Framebuffer>(viewportWidth, viewportHeight);
-
     // Make the window's context current
     glfwMakeContextCurrent(window);
+    std::cout << "DEBUG: OpenGL context made current" << std::endl;
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -78,14 +111,45 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
         glfwTerminate();
         return false;
     }
+    std::cout << "DEBUG: GLEW initialized" << std::endl;
 
+    // Clear any GL errors from GLEW initialization
+    while (glGetError() != GL_NO_ERROR);
+
+    // Create viewport framebuffer (start with default size)
+    std::cout << "DEBUG: Creating viewport framebuffer..." << std::endl;
+    try {
+        viewportFramebuffer = std::make_unique<Framebuffer>(viewportWidth, viewportHeight);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to create framebuffer: " << e.what() << std::endl;
+        return false;
+    }
+    std::cout << "DEBUG: Viewport framebuffer created" << std::endl;
+
+    std::cout << "DEBUG: Creating cube..." << std::endl;
     CreateCube();
+    std::cout << "DEBUG: Cube created" << std::endl;
+
+    std::cout << "DEBUG: Creating floor..." << std::endl;
     CreateFloor();
+    std::cout << "DEBUG: Floor created" << std::endl;
 
     // Setup shader
-    shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
+    std::cout << "DEBUG: Loading shaders..." << std::endl;
+    try {
+        shader = std::make_unique<Shader>("shaders/default.vert", "shaders/default.frag");
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to load shaders: " << e.what() << std::endl;
+        return false;
+    } catch (int errnum) {
+        std::cerr << "Failed to load shaders - errno: " << errnum << " - " << strerror(errnum) << std::endl;
+        std::cerr << "Make sure shader files exist at: shaders/default.vert and shaders/default.frag" << std::endl;
+        return false;
+    }
+    std::cout << "DEBUG: Shaders loaded" << std::endl;
 
     // Setup VAO, VBO, EBO - similar to main.cpp in renderer
+    std::cout << "DEBUG: Creating VAO, VBO, EBO..." << std::endl;
     vao = std::make_unique<VAO>();
     vao->Bind();
 
@@ -98,17 +162,23 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
     vao->Unbind();
     vbo->Unbind();
     ebo->Unbind();
+    std::cout << "DEBUG: VAO, VBO, EBO created" << std::endl;
 
     // Setup ImGui
+    std::cout << "DEBUG: Setting up ImGui..." << std::endl;
     imguiManager = std::make_unique<ImGuiManager>(window);
     imguiManager->Initialize();
+    std::cout << "DEBUG: ImGui initialized" << std::endl;
 
     // Setup camera
+    std::cout << "DEBUG: Creating camera..." << std::endl;
     camera = std::make_unique<Camera>(width, height, glm::vec3(0.0f, 3.0f, 10.0f));
+    std::cout << "DEBUG: Camera created" << std::endl;
 
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
 
+    std::cout << "DEBUG: Initialize completed successfully!" << std::endl;
     return true;
 }
 
@@ -122,7 +192,6 @@ void OpenGLRendererWrapper::BeginFrame() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
     // Current time for animation
     static float lastFrameTime = glfwGetTime();
     float currentTime = glfwGetTime();
@@ -132,13 +201,15 @@ void OpenGLRendererWrapper::BeginFrame() {
     // Update camera
     camera->Inputs(window);
 
+    // Start ImGui frame FIRST - this must be called before any ImGui functions!
+    imguiManager->BeginFrame();
+
     // ----- RENDER FLOOR ------
     if (floorEnabled) {
         RenderFloor(floorSize, gridLineCount);
     }
 
-    imguiManager->BeginFrame();
-
+    // Now we can safely use ImGui functions
     ImGui::Begin("Renderer Controls");
     ImGui::Text("Hello from the OpenGLRendererWrapper!");
 
@@ -194,7 +265,6 @@ void OpenGLRendererWrapper::BeginFrame() {
     ImGui::Text("Camera Settings");
     ImGui::SliderFloat("Camera Speed", &camera->speed, 0.01f, 0.2f);
     ImGui::SliderFloat("Camera Sensitivity", &camera->sensitivity, 10.0f, 100.0f);
-
 
     // Performance
     ImGui::Separator();
