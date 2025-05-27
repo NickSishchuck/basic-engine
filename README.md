@@ -2,24 +2,18 @@
 
 A modular C++ engine built with OpenGL, featuring an Entity-Component System (ECS) architecture and real-time 3D rendering capabilities.
 
-![PlaneEngine Demo](GitHub/Peek%202025-05-23%2000-40.gif)
+![PlaneEngine Demo](https://github.com/user-attachments/assets/ee85d7da-6996-430b-b825-a1198613d134)
 
 ## Features
 
-### 🎮 Core Engine
 - **Entity-Component System (ECS)**: Flexible architecture for game object management
 - **OpenGL Renderer**: OpenGL 3.3+ rendering pipeline
-- **Modular Design**: Clean separation between App, Logic, and Common layers
 - **Real-time Debugging**: ImGui integration for live parameter tweaking
 
-### 🎨 Rendering
 - **3D Mesh Rendering**: Support for cubes and custom geometry
 - **Camera System**: Free-look camera with customizable speed and sensitivity
 - **Shader Management**: Vertex and fragment shader support (Intentional no textures)
-
-### 🛠️ Development Features
-- **Live Controls**: Real-time adjustment of rendering parameters
-- **Debug Information**: Entity and component inspection tools
+- **Live Controls**: Real-time adjustment parameters of context with ImGui
 
 ## Architecture
 
