@@ -53,7 +53,7 @@ BasicEngine/
 
 1. **Clone with submodules**:
    ```bash
-   git clone --recurse-submodules https://github.com/NickSishchuck/plane-engine
+   git clone --recurse-submodules https://github.com/NickSishchuck/basic-engine
    cd BasicEngine
    ```
 
