@@ -149,6 +149,22 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
             shader2D = nullptr;
         }
 
+        try {
+                shader2D = std::make_unique<Shader>("shaders/default2d.vert", "shaders/default2d.frag");
+                std::cout << "DEBUG: 2D shaders loaded successfully!" << std::endl;
+
+                // Initialize 2D rendering components
+                std::cout << "DEBUG: Initializing 2D rendering components..." << std::endl;
+                CreateCircle();
+                CreateRectGeometry();
+                InitializeBatchSystem();
+                std::cout << "DEBUG: 2D rendering components initialized!" << std::endl;
+
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to load 2D shaders: " << e.what() << std::endl;
+                std::cerr << "2D rendering will be disabled" << std::endl;
+                shader2D = nullptr;
+            }
     // Clear any GL errors from GLEW initialization
     while (glGetError() != GL_NO_ERROR);
 
@@ -613,6 +629,12 @@ void OpenGLRendererWrapper::BeginRender2D() {
     }
 
     rendering2D = true;
+
+    static bool first_time = true;
+    if (first_time) {
+        std::cout << "DEBUG: Beginning 2D rendering for first time" << std::endl;
+        first_time = false;
+    }
 
     // Switch to 2D rendering state
     glDisable(GL_DEPTH_TEST);  // Disable depth testing for 2D

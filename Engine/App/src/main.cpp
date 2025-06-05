@@ -213,14 +213,28 @@ private:
         }
     }
 
+    // Add this debug output to your RenderParticleScene() method in main.cpp:
+
     void RenderParticleScene() {
+        std::cout << "DEBUG: [1] Starting RenderParticleScene (Simple Version)" << std::endl;
+
         // Switch to 2D rendering mode
         renderer.BeginRender2D();
+        std::cout << "DEBUG: [2] BeginRender2D completed" << std::endl;
+
+        static int frame_count = 0;
+        frame_count++;
 
         auto currentScene = sceneManager.GetCurrentScene();
         if (currentScene) {
-            // Use batch rendering for better performance with many particles
-            renderer.BeginBatch();
+            if (frame_count % 60 == 1) {
+                std::cout << "DEBUG: Rendering particle scene - "
+                          << currentScene->GetEntities().size() << " entities" << std::endl;
+            }
+
+            // SIMPLIFIED: Render each entity individually
+            int circles_rendered = 0;
+            int cubes_rendered = 0;
 
             for (const auto& entity : currentScene->GetEntities()) {
                 if (!entity || !entity->IsActive()) continue;
@@ -233,24 +247,63 @@ private:
                     glm::vec2 pos2D = glm::vec2(pos3D.x, pos3D.y);
 
                     if (renderComp->GetPrimitiveType() == Engine::Logic::PrimitiveType::CIRCLE) {
-                        // Add circles to batch for particles
                         auto collision = entity->GetComponent<Engine::Logic::CollisionComponent>();
                         float radius = collision ? collision->GetCircle().radius : 5.0f;
-                        renderer.AddCircleToBatch(pos2D, radius, renderComp->GetColor());
+
+                        // MAKE PARTICLES VERY VISIBLE: Large bright squares
+                        float visual_size = radius * 4.0f; // Even larger
+                        glm::vec3 particle_color;
+
+                        // Different colors for different particles to track them
+                        switch (circles_rendered % 5) {
+                            case 0: particle_color = glm::vec3(1.0f, 1.0f, 0.0f); break; // Yellow
+                            case 1: particle_color = glm::vec3(1.0f, 0.5f, 0.0f); break; // Orange
+                            case 2: particle_color = glm::vec3(0.0f, 1.0f, 1.0f); break; // Cyan
+                            case 3: particle_color = glm::vec3(1.0f, 0.0f, 1.0f); break; // Magenta
+                            case 4: particle_color = glm::vec3(0.5f, 1.0f, 0.5f); break; // Light green
+                        }
+
+                        // Render as large rectangle for maximum visibility
+                        renderer.RenderRect2D(pos2D, glm::vec2(visual_size, visual_size), particle_color);
+
+                        circles_rendered++;
+
+                        // Print positions of first few particles every second
+                        if (circles_rendered <= 5 && frame_count % 60 == 1) {
+                            std::cout << "  PARTICLE " << circles_rendered
+                                      << " at (" << pos2D.x << ", " << pos2D.y
+                                      << ") size " << visual_size << "x" << visual_size << std::endl;
+                        }
+
                     } else if (renderComp->GetPrimitiveType() == Engine::Logic::PrimitiveType::CUBE) {
-                        // Render walls as rectangles
                         glm::vec3 scale = transform->GetScale();
                         glm::vec2 size = glm::vec2(scale.x, scale.y);
+
+                        // Use the colors from the render component (already set in CreateWall)
                         renderer.RenderRect2D(pos2D, size, renderComp->GetColor());
+
+                        cubes_rendered++;
+
+                        // Print wall info every second
+                        if (frame_count % 60 == 1) {
+                            std::cout << "  WALL '" << entity->GetName()
+                                      << "' at (" << pos2D.x << ", " << pos2D.y
+                                      << ") size " << size.x << "x" << size.y << std::endl;
+                        }
                     }
                 }
             }
 
-            renderer.RenderBatch();
-            renderer.EndBatch();
+            if (frame_count % 60 == 1) {
+                std::cout << "  TOTAL RENDERED: " << circles_rendered << " particles, "
+                          << cubes_rendered << " walls" << std::endl;
+                std::cout << "  Expected to see: " << circles_rendered << " colored squares moving downward" << std::endl;
+            }
         }
 
+        std::cout << "DEBUG: [7] Starting EndRender2D" << std::endl;
         renderer.EndRender2D();
+        std::cout << "DEBUG: [8] EndRender2D completed" << std::endl;
     }
 
     void RenderUI() {

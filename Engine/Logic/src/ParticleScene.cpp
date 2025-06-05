@@ -6,84 +6,156 @@
 namespace Engine {
 namespace Logic {
 
-ParticleScene::ParticleScene()
-    : gen(rd()), colorDist(0.3f, 1.0f), positionDist(-1.0f, 1.0f), velocityDist(-50.0f, 50.0f) {
-    scene = std::make_shared<Scene>("Particle Physics Scene");
-    collisionSystem = std::make_unique<CollisionSystem>();
-    Initialize();
-}
+    ParticleScene::ParticleScene()
+        : gen(rd()), colorDist(0.3f, 1.0f), positionDist(-1.0f, 1.0f), velocityDist(-50.0f, 50.0f) {
+        scene = std::make_shared<Scene>("Particle Physics Scene");
+        collisionSystem = std::make_unique<CollisionSystem>();
 
-void ParticleScene::Initialize() {
-    std::cout << "Initializing Particle Scene..." << std::endl;
+        // BETTER CUP DIMENSIONS for visibility
+        cupWidth = 100.0f;           // Narrower cup width
+        cupHeight = 150.0f;          // Shorter height
+        wallThickness = 8.0f;        // Thinner walls
+        cupCenter = glm::vec2(0.0f, 0.0f); // Move cup higher up
 
-    // Create the cup boundaries
-    CreateCupBoundaries();
+        // Particle spawning
+        particleRadius = 8.0f;
+        minParticleRadius = 3.0f;
+        maxParticleRadius = 15.0f;
+        spawnArea = glm::vec2(140.0f, 30.0f); // Adjust to new cup width
+        spawnHeight = 80.0f;         // Lower spawn height
 
-    std::cout << "Particle Scene initialized with cup boundaries" << std::endl;
-    std::cout << "Cup dimensions: " << cupWidth << "x" << cupHeight << " pixels" << std::endl;
-}
+        Initialize();
+    }
+
+    void ParticleScene::Initialize() {
+        std::cout << "Initializing Particle Scene..." << std::endl;
+        std::cout << "Cup parameters:" << std::endl;
+        std::cout << "  Center: (" << cupCenter.x << ", " << cupCenter.y << ")" << std::endl;
+        std::cout << "  Width: " << cupWidth << ", Height: " << cupHeight << std::endl;
+        std::cout << "  Spawn height: " << spawnHeight << std::endl;
+
+        // Create the cup boundaries
+        CreateCupBoundaries();
+
+        // Spawn initial particles at known positions for testing
+        std::cout << "Spawning initial test particles..." << std::endl;
+
+        // Spawn one particle at a known good position for testing
+        glm::vec2 testPos1 = glm::vec2(0.0f, cupCenter.y + cupHeight + 50.0f); // Center above cup
+        SpawnParticle(testPos1, 12.0f); // Larger particle
+        std::cout << "Test particle 1 spawned at (" << testPos1.x << ", " << testPos1.y << ")" << std::endl;
+
+        // Spawn a few more at different positions
+        glm::vec2 testPos2 = glm::vec2(-30.0f, cupCenter.y + cupHeight + 80.0f);
+        SpawnParticle(testPos2, 10.0f);
+        std::cout << "Test particle 2 spawned at (" << testPos2.x << ", " << testPos2.y << ")" << std::endl;
+
+        glm::vec2 testPos3 = glm::vec2(30.0f, cupCenter.y + cupHeight + 60.0f);
+        SpawnParticle(testPos3, 8.0f);
+        std::cout << "Test particle 3 spawned at (" << testPos3.x << ", " << testPos3.y << ")" << std::endl;
+
+        std::cout << "Particle Scene initialized with cup boundaries and " << particles.size() << " test particles" << std::endl;
+        std::cout << "Expected particle positions:" << std::endl;
+        for (size_t i = 0; i < particles.size(); ++i) {
+            auto transform = particles[i]->GetComponent<TransformComponent>();
+            if (transform) {
+                glm::vec3 pos = transform->GetPosition();
+                std::cout << "  Particle " << (i+1) << ": (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
+            }
+        }
+    }
+
 
 void ParticleScene::CreateCupBoundaries() {
-    // Calculate wall positions based on cup dimensions
+    // Calculate wall positions for a proper U-shaped cup
     float halfWidth = cupWidth / 2.0f;
+    float cupBottom = cupCenter.y;          // Bottom of the cup
+    float cupTop = cupCenter.y + cupHeight; // Top of the cup
 
-    // Bottom wall (full width)
-    glm::vec2 bottomStart = cupCenter + glm::vec2(-halfWidth - wallThickness, 0.0f);
-    glm::vec2 bottomEnd = cupCenter + glm::vec2(halfWidth + wallThickness, 0.0f);
-    CreateWall(bottomWall, "Bottom Wall", bottomStart, bottomEnd, glm::vec3(0.6f, 0.6f, 0.6f));
+    std::cout << "Creating cup boundaries:" << std::endl;
+    std::cout << "  Cup center: (" << cupCenter.x << ", " << cupCenter.y << ")" << std::endl;
+    std::cout << "  Cup width: " << cupWidth << ", height: " << cupHeight << std::endl;
+    std::cout << "  Cup bottom Y: " << cupBottom << ", top Y: " << cupTop << std::endl;
 
-    // Left wall (vertical)
-    glm::vec2 leftStart = cupCenter + glm::vec2(-halfWidth, 0.0f);
-    glm::vec2 leftEnd = cupCenter + glm::vec2(-halfWidth, cupHeight);
-    CreateWall(leftWall, "Left Wall", leftStart, leftEnd, glm::vec3(0.7f, 0.4f, 0.4f));
+    // BOTTOM WALL - horizontal line at the bottom of the cup
+    glm::vec2 bottomStart = glm::vec2(cupCenter.x - halfWidth, cupBottom);
+    glm::vec2 bottomEnd = glm::vec2(cupCenter.x + halfWidth, cupBottom);
+    CreateWall(bottomWall, "Bottom Wall", bottomStart, bottomEnd, glm::vec3(1.0f, 0.0f, 0.0f)); // Red
 
-    // Right wall (vertical)
-    glm::vec2 rightStart = cupCenter + glm::vec2(halfWidth, 0.0f);
-    glm::vec2 rightEnd = cupCenter + glm::vec2(halfWidth, cupHeight);
-    CreateWall(rightWall, "Right Wall", rightStart, rightEnd, glm::vec3(0.4f, 0.7f, 0.4f));
+    std::cout << "  Bottom wall: (" << bottomStart.x << ", " << bottomStart.y
+              << ") to (" << bottomEnd.x << ", " << bottomEnd.y << ")" << std::endl;
+
+    // LEFT WALL - vertical line on the left side
+    glm::vec2 leftStart = glm::vec2(cupCenter.x - halfWidth, cupBottom);
+    glm::vec2 leftEnd = glm::vec2(cupCenter.x - halfWidth, cupTop);
+    CreateWall(leftWall, "Left Wall", leftStart, leftEnd, glm::vec3(0.0f, 1.0f, 0.0f)); // Green
+
+    std::cout << "  Left wall: (" << leftStart.x << ", " << leftStart.y
+              << ") to (" << leftEnd.x << ", " << leftEnd.y << ")" << std::endl;
+
+    // RIGHT WALL - vertical line on the right side
+    glm::vec2 rightStart = glm::vec2(cupCenter.x + halfWidth, cupBottom);
+    glm::vec2 rightEnd = glm::vec2(cupCenter.x + halfWidth, cupTop);
+    CreateWall(rightWall, "Right Wall", rightStart, rightEnd, glm::vec3(0.0f, 0.0f, 1.0f)); // Blue
+
+    std::cout << "  Right wall: (" << rightStart.x << ", " << rightStart.y
+              << ") to (" << rightEnd.x << ", " << rightEnd.y << ")" << std::endl;
 }
 
 void ParticleScene::CreateWall(std::shared_ptr<Entity>& wall, const std::string& name,
                               const glm::vec2& start, const glm::vec2& end, const glm::vec3& color) {
     wall = scene->CreateEntity(name);
 
-    // Transform - walls don't need position since line collider uses absolute coordinates
-    auto transform = wall->AddComponent<TransformComponent>(
-        glm::vec3(0.0f, 0.0f, 0.0f), // Position (not used for line colliders)
-        glm::vec3(0.0f, 0.0f, 0.0f), // Rotation
-        glm::vec3(1.0f, 1.0f, 1.0f)  // Scale
-    );
-
-    // Render component - for visual representation, create a rectangle
+    // Calculate wall properties
     glm::vec2 wallCenter = (start + end) * 0.5f;
-    glm::vec2 wallSize = glm::vec2(
-        std::abs(end.x - start.x) + wallThickness,
-        std::abs(end.y - start.y) + wallThickness
+    glm::vec2 wallDirection = end - start;
+    float wallLength = glm::length(wallDirection);
+
+    // Determine if this is a horizontal or vertical wall
+    bool isHorizontal = std::abs(wallDirection.x) > std::abs(wallDirection.y);
+
+    glm::vec2 wallSize;
+    if (isHorizontal) {
+        // Horizontal wall (like bottom wall)
+        wallSize = glm::vec2(wallLength, wallThickness);
+    } else {
+        // Vertical wall (like left/right walls)
+        wallSize = glm::vec2(wallThickness, wallLength);
+    }
+
+    std::cout << "Creating wall '" << name << "':" << std::endl;
+    std::cout << "  Line: (" << start.x << ", " << start.y << ") to (" << end.x << ", " << end.y << ")" << std::endl;
+    std::cout << "  Center: (" << wallCenter.x << ", " << wallCenter.y << ")" << std::endl;
+    std::cout << "  Size: " << wallSize.x << " x " << wallSize.y << std::endl;
+    std::cout << "  Type: " << (isHorizontal ? "Horizontal" : "Vertical") << std::endl;
+
+    // Transform component - position at wall center
+    auto transform = wall->AddComponent<TransformComponent>(
+        glm::vec3(wallCenter.x, wallCenter.y, 0.0f), // Position at calculated center
+        glm::vec3(0.0f, 0.0f, 0.0f),                // No rotation
+        glm::vec3(wallSize.x, wallSize.y, wallThickness) // Scale to wall size
     );
 
-    // Adjust transform position to wall center for rendering
-    transform->SetPosition(glm::vec3(wallCenter.x, wallCenter.y, 0.0f));
-
+    // Render component - visual representation
     auto render = wall->AddComponent<RenderComponent>(
-        PrimitiveType::CUBE, // We'll render as rectangles for now
-        color,
-        true
+        PrimitiveType::CUBE, // Render as rectangle
+        color,               // Wall color
+        true                 // Visible
     );
 
-    // Set scale to match wall size
-    transform->SetScale(glm::vec3(wallSize.x, wallSize.y, wallThickness));
-
-    // Collision component - line collider for precise collision detection
+    // Collision component - line collider for precise physics
     auto collision = wall->AddComponent<CollisionComponent>(
         CollisionShape::LINE_SEGMENT,
         false, // Not a trigger
         true,  // Static object
         "wall"
     );
-    collision->SetLine(start, end, wallThickness);
+    collision->SetLine(start, end, wallThickness / 2.0f); // Use half thickness for collision
 
     // Register with collision system
     collisionSystem->RegisterEntity(wall);
+
+    std::cout << "  Wall '" << name << "' created successfully!" << std::endl;
 }
 
 void ParticleScene::Update(float deltaTime) {
@@ -192,9 +264,15 @@ glm::vec3 ParticleScene::GenerateParticleColor() {
 }
 
 glm::vec2 ParticleScene::GenerateSpawnPosition() {
-    float x = cupCenter.x + (positionDist(gen) * spawnArea.x / 2.0f);
-    float y = cupCenter.y + cupHeight + spawnHeight + (positionDist(gen) * spawnArea.y / 2.0f);
-    return glm::vec2(x, y);
+    // Spawn particles above the cup, within the cup width
+    float spawnX = cupCenter.x + (positionDist(gen) * (cupWidth * 0.8f) / 2.0f); // Slightly narrower than cup
+    float spawnY = cupCenter.y + cupHeight + spawnHeight + (positionDist(gen) * 20.0f); // Above cup with some randomness
+
+    std::cout << "Generated spawn position: (" << spawnX << ", " << spawnY << ")" << std::endl;
+    std::cout << "  Cup range: X(" << (cupCenter.x - cupWidth/2) << " to " << (cupCenter.x + cupWidth/2)
+              << ") Y(" << cupCenter.y << " to " << (cupCenter.y + cupHeight) << ")" << std::endl;
+
+    return glm::vec2(spawnX, spawnY);
 }
 
 glm::vec2 ParticleScene::GenerateInitialVelocity() {
