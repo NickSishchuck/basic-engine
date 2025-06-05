@@ -3,6 +3,7 @@
 
 #include "RendererInterface.h"
 #include "../../../renderer/include/FrameBuffer.h"
+#include <vector>
 #include <memory>
 
 // Forward declarations for renderer components
@@ -12,6 +13,7 @@ class VBO;
 class EBO;
 class ImGuiManager;
 class Camera;
+class Camera2D;  // New 2D camera
 
 namespace Engine {
 namespace Common {
@@ -28,6 +30,11 @@ class OpenGLRendererWrapper : public RendererInterface {
         std::unique_ptr<EBO> ebo;
         std::unique_ptr<ImGuiManager> imguiManager;
         std::unique_ptr<Camera> camera;
+
+        // 2D Rendering components
+        std::unique_ptr<Camera2D> camera2D;
+        std::unique_ptr<Shader> shader2D;
+        bool rendering2D = false;
 
         // Viewport rendering
         std::unique_ptr<Framebuffer> viewportFramebuffer;
@@ -54,6 +61,24 @@ class OpenGLRendererWrapper : public RendererInterface {
         std::unique_ptr<VAO> gridVAO;
         std::unique_ptr<VBO> gridVBO;
 
+        // 2D Shape rendering
+        std::unique_ptr<VAO> circleVAO;
+        std::unique_ptr<VBO> circleVBO;
+        std::unique_ptr<EBO> circleEBO;
+
+        std::unique_ptr<VAO> rectVAO;
+        std::unique_ptr<VBO> rectVBO;
+        std::unique_ptr<EBO> rectEBO;
+
+        // Batch rendering for particles
+        struct ParticleBatch {
+            std::vector<float> vertices;
+            std::vector<unsigned int> indices;
+            std::unique_ptr<VAO> batchVAO;
+            std::unique_ptr<VBO> batchVBO;
+            std::unique_ptr<EBO> batchEBO;
+                size_t particleCount = 0;
+            } particleBatch;
         // Floor settings
         bool floorEnabled;
         float floorSize;
@@ -90,6 +115,22 @@ public:
     void SetFloorEnabled(bool enabled) override { floorEnabled = enabled; }
     bool IsFloorEnabled() const override { return floorEnabled; }
 
+
+    // 2D Rendering capabilities
+    void BeginRender2D() override;
+    void EndRender2D() override;
+
+    // 2D Shape rendering
+    void CreateCircle() override;
+    void RenderCircle2D(const glm::vec2& position, float radius, const glm::vec3& color = glm::vec3(1.0f)) override;
+    void RenderRect2D(const glm::vec2& position, const glm::vec2& size, const glm::vec3& color = glm::vec3(1.0f)) override;
+
+    // Batch rendering for particles
+    void BeginBatch() override;
+    void AddCircleToBatch(const glm::vec2& position, float radius, const glm::vec3& color) override;
+    void RenderBatch() override;
+    void EndBatch() override;
+
     // Viewport rendering methods
     void BeginViewportRender();
     void EndViewportRender();
@@ -100,6 +141,11 @@ public:
 private:
     void CreateFloorPlane(float size);
     void CreateGridLines(float size, int gridLines);
+
+    // 2D shape creation helpers
+    void CreateCircleGeometry();
+    void CreateRectGeometry();
+    void InitializeBatchSystem();
 };
 
 } // namespace Common

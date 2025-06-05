@@ -5,6 +5,7 @@
 #include "../../../renderer/include/EBO.h"
 #include "../../../renderer/include/ImGuiManager.h"
 #include "../../../renderer/include/Camera.h"
+#include "../../../renderer/include/Camera2D.h"
 #include "../../../renderer/include/Logger.h"
 #include <iostream>
 #include <vector>
@@ -28,7 +29,8 @@ namespace Common {
         windowHeight(600),
         viewportWidth(800),
         viewportHeight(600),
-        isRenderingToViewport(false) {
+        isRenderingToViewport(false),
+        rendering2D(false) {  // Initialize 2D rendering flag
 
         std::cout << "DEBUG: OpenGLRendererWrapper constructor called" << std::endl;
 
@@ -304,6 +306,21 @@ void OpenGLRendererWrapper::Shutdown() {
     if (gridVAO) gridVAO->Delete();
     if (gridVBO) gridVBO->Delete();
 
+    // Clean up 2D resources
+    if (circleVAO) circleVAO->Delete();
+    if (circleVBO) circleVBO->Delete();
+    if (circleEBO) circleEBO->Delete();
+
+    if (rectVAO) rectVAO->Delete();
+    if (rectVBO) rectVBO->Delete();
+    if (rectEBO) rectEBO->Delete();
+
+    if (particleBatch.batchVAO) particleBatch.batchVAO->Delete();
+    if (particleBatch.batchVBO) particleBatch.batchVBO->Delete();
+    if (particleBatch.batchEBO) particleBatch.batchEBO->Delete();
+
+        if (shader2D) shader2D->Delete();
+
     if (window) {
         glfwDestroyWindow(window);
         window = nullptr;
@@ -553,6 +570,264 @@ void OpenGLRendererWrapper::EndViewportRender() {
     glViewport(0, 0, windowWidth, windowHeight);
 }
 
+// 2D Rendering Implementation
+
+void OpenGLRendererWrapper::BeginRender2D() {
+    if (!shader2D || !camera2D) {
+        std::cerr << "Warning: 2D rendering not available" << std::endl;
+        return;
+    }
+
+    rendering2D = true;
+
+    // Switch to 2D rendering state
+    glDisable(GL_DEPTH_TEST);  // Disable depth testing for 2D
+    glEnable(GL_BLEND);        // Enable alpha blending
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Activate 2D shader and set camera
+    shader2D->Activate();
+    camera2D->SetMatrices(*shader2D);
+}
+
+void OpenGLRendererWrapper::EndRender2D() {
+    if (!rendering2D) return;
+
+    rendering2D = false;
+
+    // Restore 3D rendering state
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+}
+
+void OpenGLRendererWrapper::CreateCircle() {
+    CreateCircleGeometry();
+}
+
+void OpenGLRendererWrapper::CreateCircleGeometry() {
+    // Create a quad that will be rendered as a circle in the fragment shader
+    GLfloat circleVertices[] = {
+        // Position    Color         TexCoord (for circle effect)
+        -1.0f, -1.0f,  1.0f, 1.0f, 1.0f,  -1.0f, -1.0f,  // Bottom-left
+         1.0f, -1.0f,  1.0f, 1.0f, 1.0f,   1.0f, -1.0f,  // Bottom-right
+         1.0f,  1.0f,  1.0f, 1.0f, 1.0f,   1.0f,  1.0f,  // Top-right
+        -1.0f,  1.0f,  1.0f, 1.0f, 1.0f,  -1.0f,  1.0f   // Top-left
+    };
+
+    GLuint circleIndices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    circleVAO = std::make_unique<VAO>();
+    circleVAO->Bind();
+
+    circleVBO = std::make_unique<VBO>(circleVertices, sizeof(circleVertices));
+    circleEBO = std::make_unique<EBO>(circleIndices, sizeof(circleIndices));
+
+    // Position attribute
+    circleVAO->LinkAttrib(*circleVBO, 0, 2, GL_FLOAT, 7 * sizeof(float), (void*)0);
+    // Color attribute
+    circleVAO->LinkAttrib(*circleVBO, 1, 3, GL_FLOAT, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+    // TexCoord attribute
+    circleVAO->LinkAttrib(*circleVBO, 2, 2, GL_FLOAT, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+
+    circleVAO->Unbind();
+    circleVBO->Unbind();
+    circleEBO->Unbind();
+}
+
+void OpenGLRendererWrapper::RenderCircle2D(const glm::vec2& position, float radius, const glm::vec3& color) {
+    if (!circleVAO || !shader2D || !rendering2D) return;
+
+    // Create model matrix for the circle
+    glm::mat3 modelMatrix = glm::mat3(
+        radius, 0.0f, position.x,
+        0.0f, radius, position.y,
+        0.0f, 0.0f, 1.0f
+    );
+
+    // Set uniforms
+    GLuint modelLoc = glGetUniformLocation(shader2D->ID, "model2D");
+    glUniformMatrix3fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+    GLuint shapeLoc = glGetUniformLocation(shader2D->ID, "shapeType");
+    glUniform1i(shapeLoc, 1); // 1 = circle
+
+    GLuint smoothLoc = glGetUniformLocation(shader2D->ID, "smoothness");
+    glUniform1f(smoothLoc, 0.02f); // Smoothness for antialiasing
+
+    // Override color if needed (this is a simple approach)
+    // In a real implementation, you might want to pass color as a uniform
+
+    circleVAO->Bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    circleVAO->Unbind();
+}
+
+void OpenGLRendererWrapper::CreateRectGeometry() {
+    // Create a simple rectangle
+    GLfloat rectVertices[] = {
+        // Position    Color         TexCoord
+        -1.0f, -1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f,  // Bottom-left
+         1.0f, -1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f,  // Bottom-right
+         1.0f,  1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f,  // Top-right
+        -1.0f,  1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f   // Top-left
+    };
+
+    GLuint rectIndices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    rectVAO = std::make_unique<VAO>();
+    rectVAO->Bind();
+
+    rectVBO = std::make_unique<VBO>(rectVertices, sizeof(rectVertices));
+    rectEBO = std::make_unique<EBO>(rectIndices, sizeof(rectIndices));
+
+    // Position attribute
+    rectVAO->LinkAttrib(*rectVBO, 0, 2, GL_FLOAT, 7 * sizeof(float), (void*)0);
+    // Color attribute
+    rectVAO->LinkAttrib(*rectVBO, 1, 3, GL_FLOAT, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+    // TexCoord attribute
+    rectVAO->LinkAttrib(*rectVBO, 2, 2, GL_FLOAT, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+
+    rectVAO->Unbind();
+    rectVBO->Unbind();
+    rectEBO->Unbind();
+}
+
+void OpenGLRendererWrapper::RenderRect2D(const glm::vec2& position, const glm::vec2& size, const glm::vec3& color) {
+    if (!rectVAO || !shader2D || !rendering2D) return;
+
+    // Create model matrix for the rectangle
+    glm::mat3 modelMatrix = glm::mat3(
+        size.x / 2.0f, 0.0f, position.x,
+        0.0f, size.y / 2.0f, position.y,
+        0.0f, 0.0f, 1.0f
+    );
+
+    // Set uniforms
+    GLuint modelLoc = glGetUniformLocation(shader2D->ID, "model2D");
+    glUniformMatrix3fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+    GLuint shapeLoc = glGetUniformLocation(shader2D->ID, "shapeType");
+    glUniform1i(shapeLoc, 0); // 0 = rectangle
+
+    rectVAO->Bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    rectVAO->Unbind();
+}
+
+// Batch Rendering Implementation
+
+void OpenGLRendererWrapper::InitializeBatchSystem() {
+    // Pre-allocate space for batch rendering
+    particleBatch.vertices.reserve(10000 * 7); // 10000 particles * 7 floats per vertex
+    particleBatch.indices.reserve(10000 * 6);  // 10000 particles * 6 indices per quad
+
+    // Create VAO/VBO/EBO for batch rendering
+    particleBatch.batchVAO = std::make_unique<VAO>();
+    particleBatch.batchVBO = std::make_unique<VBO>(nullptr, 10000 * 4 * 7 * sizeof(float)); // Dynamic buffer
+    particleBatch.batchEBO = std::make_unique<EBO>(nullptr, 10000 * 6 * sizeof(unsigned int)); // Dynamic buffer
+
+    particleBatch.batchVAO->Bind();
+
+    // Set up vertex attributes for batch rendering
+    particleBatch.batchVAO->LinkAttrib(*particleBatch.batchVBO, 0, 2, GL_FLOAT, 7 * sizeof(float), (void*)0);
+    particleBatch.batchVAO->LinkAttrib(*particleBatch.batchVBO, 1, 3, GL_FLOAT, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+    particleBatch.batchVAO->LinkAttrib(*particleBatch.batchVBO, 2, 2, GL_FLOAT, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+
+    particleBatch.batchVAO->Unbind();
+}
+
+void OpenGLRendererWrapper::BeginBatch() {
+    if (!shader2D) return;
+
+    particleBatch.vertices.clear();
+    particleBatch.indices.clear();
+    particleBatch.particleCount = 0;
+}
+
+void OpenGLRendererWrapper::AddCircleToBatch(const glm::vec2& position, float radius, const glm::vec3& color) {
+    if (!shader2D) return;
+
+    // Add vertices for a circle quad
+    unsigned int baseIndex = particleBatch.particleCount * 4;
+
+    // Bottom-left
+    particleBatch.vertices.insert(particleBatch.vertices.end(), {
+        position.x - radius, position.y - radius,  // Position
+        color.r, color.g, color.b,                 // Color
+        -1.0f, -1.0f                               // TexCoord for circle
+    });
+
+    // Bottom-right
+    particleBatch.vertices.insert(particleBatch.vertices.end(), {
+        position.x + radius, position.y - radius,
+        color.r, color.g, color.b,
+        1.0f, -1.0f
+    });
+
+    // Top-right
+    particleBatch.vertices.insert(particleBatch.vertices.end(), {
+        position.x + radius, position.y + radius,
+        color.r, color.g, color.b,
+        1.0f, 1.0f
+    });
+
+    // Top-left
+    particleBatch.vertices.insert(particleBatch.vertices.end(), {
+        position.x - radius, position.y + radius,
+        color.r, color.g, color.b,
+        -1.0f, 1.0f
+    });
+
+    // Add indices for the quad
+    particleBatch.indices.insert(particleBatch.indices.end(), {
+        baseIndex + 0, baseIndex + 1, baseIndex + 2,
+        baseIndex + 2, baseIndex + 3, baseIndex + 0
+    });
+
+    particleBatch.particleCount++;
+}
+
+void OpenGLRendererWrapper::RenderBatch() {
+    if (!shader2D || !particleBatch.batchVAO || particleBatch.particleCount == 0) return;
+
+    // Update buffer data
+    particleBatch.batchVBO->Bind();
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    particleBatch.vertices.size() * sizeof(float),
+                    particleBatch.vertices.data());
+
+    particleBatch.batchEBO->Bind();
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                    particleBatch.indices.size() * sizeof(unsigned int),
+                    particleBatch.indices.data());
+
+    // Set uniforms for circle batch rendering
+    GLuint modelLoc = glGetUniformLocation(shader2D->ID, "model2D");
+    glm::mat3 identityMatrix = glm::mat3(1.0f);
+    glUniformMatrix3fv(modelLoc, 1, GL_FALSE, glm::value_ptr(identityMatrix));
+
+    GLuint shapeLoc = glGetUniformLocation(shader2D->ID, "shapeType");
+    glUniform1i(shapeLoc, 1); // 1 = circle
+
+    GLuint smoothLoc = glGetUniformLocation(shader2D->ID, "smoothness");
+    glUniform1f(smoothLoc, 0.02f);
+
+    // Render the batch
+    particleBatch.batchVAO->Bind();
+    glDrawElements(GL_TRIANGLES, particleBatch.indices.size(), GL_UNSIGNED_INT, 0);
+    particleBatch.batchVAO->Unbind();
+}
+
+void OpenGLRendererWrapper::EndBatch() {
+    // Nothing special needed here for now
+}
+
 GLuint OpenGLRendererWrapper::GetViewportTexture() const {
     return viewportFramebuffer ? viewportFramebuffer->GetTexture() : 0;
 }
@@ -574,7 +849,11 @@ void OpenGLRendererWrapper::ResizeViewport(int width, int height) {
 void OpenGLRendererWrapper::SetMainWindowSize(int width, int height) {
     windowWidth = width;
     windowHeight = height;
-}
 
+    // Update 2D camera viewport as well
+    if (camera2D) {
+        camera2D->SetViewportSize(width, height);
+}
+}
 } // namespace Common
 } // namespace Engine

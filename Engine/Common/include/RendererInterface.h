@@ -30,6 +30,22 @@ public:
     virtual void RenderFloor(float size = 20.0f, int gridLines = 20) = 0;
     virtual void SetFloorEnabled(bool enabled) = 0;
     virtual bool IsFloorEnabled() const = 0;
+
+
+    // 2D Rendering capabilities
+    virtual void BeginRender2D() = 0;
+    virtual void EndRender2D() = 0;
+
+    // 2D Shape rendering
+    virtual void CreateCircle() = 0;
+    virtual void RenderCircle2D(const glm::vec2& position, float radius, const glm::vec3& color = glm::vec3(1.0f)) = 0;
+    virtual void RenderRect2D(const glm::vec2& position, const glm::vec2& size, const glm::vec3& color = glm::vec3(1.0f)) = 0;
+
+    // Batch rendering for particles
+    virtual void BeginBatch() = 0;
+    virtual void AddCircleToBatch(const glm::vec2& position, float radius, const glm::vec3& color) = 0;
+    virtual void RenderBatch() = 0;
+    virtual void EndBatch() = 0;
 };
 
 } // namespace Common

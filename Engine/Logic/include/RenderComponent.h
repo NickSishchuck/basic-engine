@@ -12,6 +12,7 @@ enum class PrimitiveType {
     CUBE,
     SPHERE,
     PLANE,
+    CIRCLE,
     CUSTOM_MESH
 };
 
