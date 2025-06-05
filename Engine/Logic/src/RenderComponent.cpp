@@ -24,6 +24,7 @@ std::string RenderComponent::GetDebugInfo() const {
         case PrimitiveType::SPHERE: typeStr = "Sphere"; break;
         case PrimitiveType::PLANE: typeStr = "Plane"; break;
         case PrimitiveType::CUSTOM_MESH: typeStr = "Custom Mesh"; break;
+        case PrimitiveType::CIRCLE: typeStr = "Circle"; break;
     }
 
     oss << "Type: " << typeStr << "\n";

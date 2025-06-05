@@ -3,6 +3,7 @@
 #include "../../../renderer/include/ImGuiManager.h"
 #include "../../Logic/include/DemoScene.h"
 #include "../../Logic/include/PhysicsTestScene.h"
+#include "../../Logic/include/ParticleScene.h"
 #include <iostream>
 #include <glm/glm.hpp>
 
@@ -11,6 +12,7 @@ enum class AppState {
     MAIN_MENU,
     DEMO_SCENE,
     PHYSICS_SCENE,
+    PARTICLE_SCENE,
     EXITING
 };
 
@@ -22,6 +24,7 @@ private:
     // Scene instances
     std::unique_ptr<Engine::Logic::DemoScene> demoScene;
     std::unique_ptr<Engine::Logic::PhysicsTestScene> physicsScene;
+    std::unique_ptr<Engine::Logic::ParticleScene> particleScene;  // New particle scene
 
     // Application state
     AppState currentState = AppState::MAIN_MENU;
@@ -36,6 +39,11 @@ private:
     bool physicsEnabled = true;
     float physicsTimeScale = 1.0f;
 
+    // Particle scene controls
+    float particleRadius = 8.0f;
+    bool particlePhysicsEnabled = true;
+    float particleTimeScale = 1.0f;
+
 public:
     bool Initialize() {
         if (!renderer.Initialize(1920, 1080, "BasicEngine - Scene Manager Demo")) {
@@ -46,10 +54,12 @@ public:
         // Create scene instances
         demoScene = std::make_unique<Engine::Logic::DemoScene>();
         physicsScene = std::make_unique<Engine::Logic::PhysicsTestScene>();
+        particleScene = std::make_unique<Engine::Logic::ParticleScene>();  // Create particle scene
 
         // Register scenes with the scene manager
         sceneManager.RegisterScene("Demo", demoScene->GetScene());
         sceneManager.RegisterScene("Physics Test", physicsScene->GetScene());
+        sceneManager.RegisterScene("Particle Physics", particleScene->GetScene());  // Register particle scene
 
         std::cout << "BasicEngine initialized successfully!" << std::endl;
         sceneManager.PrintSceneList();
@@ -80,6 +90,7 @@ public:
     void Shutdown() {
         demoScene.reset();
         physicsScene.reset();
+        particleScene.reset();  // Clean up particle scene
         renderer.Shutdown();
     }
 
@@ -91,6 +102,7 @@ private:
         switch (currentState) {
             case AppState::DEMO_SCENE:
             case AppState::PHYSICS_SCENE:
+            case AppState::PARTICLE_SCENE:  // Handle particle scene exit
                 sceneManager.UnloadCurrentScene();
                 break;
             default:
@@ -121,6 +133,15 @@ private:
                 std::cout << "Entered Physics Test Scene" << std::endl;
                 break;
 
+            case AppState::PARTICLE_SCENE:  // Handle particle scene entry
+                sceneManager.LoadScene("Particle Physics");
+                showMainMenu = false;
+                particleScene->SetPhysicsEnabled(particlePhysicsEnabled);
+                particleScene->SetTimeScale(particleTimeScale);
+                particleScene->SetParticleRadius(particleRadius);
+                std::cout << "Entered Particle Physics Scene" << std::endl;
+                break;
+
             case AppState::EXITING:
                 std::cout << "Exiting application..." << std::endl;
                 break;
@@ -147,6 +168,10 @@ private:
                 physicsScene->Update(deltaTime);
                 break;
 
+            case AppState::PARTICLE_SCENE:  // Update particle scene
+                particleScene->Update(deltaTime);
+                break;
+
             case AppState::EXITING:
                 break;
         }
@@ -156,7 +181,9 @@ private:
         renderer.BeginFrame();
 
         // Render current scene
-        if (currentState != AppState::MAIN_MENU) {
+        if (currentState == AppState::PARTICLE_SCENE) {
+            RenderParticleScene();  // Special 2D rendering for particle scene
+        } else if (currentState != AppState::MAIN_MENU) {
             RenderCurrentScene();
         }
 
@@ -170,7 +197,7 @@ private:
         auto currentScene = sceneManager.GetCurrentScene();
         if (!currentScene) return;
 
-        // Render all entities in the current scene
+        // Render all entities in the current scene (3D rendering)
         for (const auto& entity : currentScene->GetEntities()) {
             if (!entity || !entity->IsActive()) continue;
 
@@ -184,6 +211,46 @@ private:
                 }
             }
         }
+    }
+
+    void RenderParticleScene() {
+        // Switch to 2D rendering mode
+        renderer.BeginRender2D();
+
+        auto currentScene = sceneManager.GetCurrentScene();
+        if (currentScene) {
+            // Use batch rendering for better performance with many particles
+            renderer.BeginBatch();
+
+            for (const auto& entity : currentScene->GetEntities()) {
+                if (!entity || !entity->IsActive()) continue;
+
+                auto transform = entity->GetComponent<Engine::Logic::TransformComponent>();
+                auto renderComp = entity->GetComponent<Engine::Logic::RenderComponent>();
+
+                if (transform && renderComp && renderComp->IsVisible()) {
+                    glm::vec3 pos3D = transform->GetPosition();
+                    glm::vec2 pos2D = glm::vec2(pos3D.x, pos3D.y);
+
+                    if (renderComp->GetPrimitiveType() == Engine::Logic::PrimitiveType::CIRCLE) {
+                        // Add circles to batch for particles
+                        auto collision = entity->GetComponent<Engine::Logic::CollisionComponent>();
+                        float radius = collision ? collision->GetCircle().radius : 5.0f;
+                        renderer.AddCircleToBatch(pos2D, radius, renderComp->GetColor());
+                    } else if (renderComp->GetPrimitiveType() == Engine::Logic::PrimitiveType::CUBE) {
+                        // Render walls as rectangles
+                        glm::vec3 scale = transform->GetScale();
+                        glm::vec2 size = glm::vec2(scale.x, scale.y);
+                        renderer.RenderRect2D(pos2D, size, renderComp->GetColor());
+                    }
+                }
+            }
+
+            renderer.RenderBatch();
+            renderer.EndBatch();
+        }
+
+        renderer.EndRender2D();
     }
 
     void RenderUI() {
@@ -201,7 +268,7 @@ private:
     void RenderMainMenu() {
         // Center the main menu
         ImGuiIO& io = ImGui::GetIO();
-        ImVec2 windowSize(400, 300);
+        ImVec2 windowSize(400, 350);  // Increased height for new scene
         ImVec2 windowPos((io.DisplaySize.x - windowSize.x) * 0.5f, (io.DisplaySize.y - windowSize.y) * 0.5f);
 
         ImGui::SetNextWindowSize(windowSize);
@@ -227,16 +294,24 @@ private:
             if (ImGui::Button("Demo Scene", ImVec2(350, 40))) {
                 RequestStateChange(AppState::DEMO_SCENE);
             }
-            ImGui::Text(" ? Moving and rotating cubes");
-            ImGui::Text(" ? Basic animation showcase");
+            ImGui::Text(" • Moving and rotating cubes");
+            ImGui::Text(" • Basic animation showcase");
 
             ImGui::Spacing();
 
             if (ImGui::Button("Physics Test", ImVec2(350, 40))) {
                 RequestStateChange(AppState::PHYSICS_SCENE);
             }
-            ImGui::Text(" ? Falling and bouncing objects");
-            ImGui::Text(" ? Simple physics simulation");
+            ImGui::Text(" • Falling and bouncing objects");
+            ImGui::Text(" • Simple physics simulation");
+
+            ImGui::Spacing();
+
+            if (ImGui::Button("Particle Physics", ImVec2(350, 40))) {  // New particle scene button
+                RequestStateChange(AppState::PARTICLE_SCENE);
+            }
+            ImGui::Text(" • 2D particle simulation");
+            ImGui::Text(" • Collision detection and response");
 
             ImGui::Spacing();
             ImGui::Separator();
@@ -271,6 +346,10 @@ private:
 
                 case AppState::PHYSICS_SCENE:
                     RenderPhysicsSceneControls();
+                    break;
+
+                case AppState::PARTICLE_SCENE:  // New particle scene controls
+                    RenderParticleSceneControls();
                     break;
 
                 default:
@@ -377,6 +456,60 @@ private:
         }
     }
 
+    void RenderParticleSceneControls() {  // New particle scene controls
+        ImGui::Text("2D Particle Physics Controls");
+
+        // Physics controls
+        if (ImGui::Checkbox("Enable Physics", &particlePhysicsEnabled)) {
+            particleScene->SetPhysicsEnabled(particlePhysicsEnabled);
+        }
+
+        if (ImGui::SliderFloat("Time Scale", &particleTimeScale, 0.0f, 3.0f)) {
+            particleScene->SetTimeScale(particleTimeScale);
+        }
+
+        ImGui::Separator();
+
+        // Particle spawning controls
+        ImGui::Text("Particle Spawning");
+
+        if (ImGui::SliderFloat("Particle Size", &particleRadius,
+                              particleScene->GetMinParticleRadius(),
+                              particleScene->GetMaxParticleRadius())) {
+            particleScene->SetParticleRadius(particleRadius);
+        }
+
+        if (ImGui::Button("Spawn Particle", ImVec2(120, 30))) {
+            particleScene->SpawnParticle();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Clear All", ImVec2(80, 30))) {
+            particleScene->ClearAllParticles();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Reset Scene", ImVec2(90, 30))) {
+            particleScene->Reset();
+        }
+
+        ImGui::Separator();
+
+        // Particle scene info
+        ImGui::Text("Particle Count: %zu", particleScene->GetParticleCount());
+        ImGui::Text("Cup Dimensions: %.0fx%.0f pixels",
+                   particleScene->GetCupWidth(), particleScene->GetCupHeight());
+
+        // Collision system info
+        if (ImGui::TreeNode("Collision System")) {
+            auto collisionSystem = particleScene->GetCollisionSystem();
+            if (collisionSystem) {
+                ImGui::Text("%s", collisionSystem->GetDebugInfo().c_str());
+            }
+            ImGui::TreePop();
+        }
+    }
+
     void RenderDebugInfo() {
         if (ImGui::Begin("Debug Information")) {
             ImGui::Text("Application State: %s", GetStateString(currentState));
@@ -395,6 +528,16 @@ private:
                 ImGui::Text("Current Scene Debug:");
                 ImGui::Text("%s", currentScene->GetDebugInfo().c_str());
             }
+
+            // Particle scene specific debug info
+            if (currentState == AppState::PARTICLE_SCENE) {
+                ImGui::Separator();
+                ImGui::Text("Particle Scene Debug:");
+                auto collisionSystem = particleScene->GetCollisionSystem();
+                if (collisionSystem) {
+                    ImGui::Text("%s", collisionSystem->GetDebugInfo().c_str());
+                }
+            }
         }
         ImGui::End();
     }
@@ -409,6 +552,7 @@ private:
             case AppState::MAIN_MENU: return "Main Menu";
             case AppState::DEMO_SCENE: return "Demo Scene";
             case AppState::PHYSICS_SCENE: return "Physics Scene";
+            case AppState::PARTICLE_SCENE: return "Particle Scene";  // New state string
             case AppState::EXITING: return "Exiting";
             default: return "Unknown";
         }

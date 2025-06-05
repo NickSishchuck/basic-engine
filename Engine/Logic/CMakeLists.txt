@@ -6,6 +6,10 @@ set(LOGIC_SOURCES
     src/SceneManager.cpp
     src/DemoScene.cpp
     src/PhysicsTestScene.cpp
+    src/SimplePhysicsComponent.cpp
+    src/CollisionComponent.cpp
+    src/CollisionSystem.cpp
+    src/ParticleScene.cpp
 )
 
 set(LOGIC_HEADERS
@@ -17,6 +21,10 @@ set(LOGIC_HEADERS
     include/SceneManager.h
     include/DemoScene.h
     include/PhysicsTestScene.h
+    include/SimplePhysicsComponent.h
+    include/CollisionComponent.h
+    include/CollisionSystem.h
+    include/ParticleScene.h
 )
 
 add_library(Logic STATIC ${LOGIC_SOURCES} ${LOGIC_HEADERS})

@@ -7,6 +7,7 @@
 #include "../../../renderer/include/Camera.h"
 #include "../../../renderer/include/Camera2D.h"
 #include "../../../renderer/include/Logger.h"
+#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -114,6 +115,39 @@ bool OpenGLRendererWrapper::Initialize(int width, int height, const char* title)
         return false;
     }
     std::cout << "DEBUG: GLEW initialized" << std::endl;
+
+    // Setup 2D camera and shader
+        std::cout << "DEBUG: Creating 2D camera and shader..." << std::endl;
+        camera2D = std::make_unique<Camera2D>(width, height, glm::vec2(0.0f, 0.0f));
+
+        // Check if shader files exist
+        std::cout << "DEBUG: Checking for 2D shader files..." << std::endl;
+        std::ifstream vertFile("shaders/default2d.vert");
+        std::ifstream fragFile("shaders/default2d.frag");
+
+        if (!vertFile.good()) {
+            std::cerr << "ERROR: shaders/default2d.vert not found!" << std::endl;
+            std::cerr << "Current working directory: " << std::filesystem::current_path() << std::endl;
+        }
+        if (!fragFile.good()) {
+            std::cerr << "ERROR: shaders/default2d.frag not found!" << std::endl;
+        }
+
+        vertFile.close();
+        fragFile.close();
+
+        try {
+            shader2D = std::make_unique<Shader>("shaders/default2d.vert", "shaders/default2d.frag");
+            std::cout << "DEBUG: 2D shaders loaded successfully!" << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to load 2D shaders: " << e.what() << std::endl;
+            std::cerr << "2D rendering will be disabled" << std::endl;
+            shader2D = nullptr;
+        } catch (int errnum) {
+            std::cerr << "Failed to load 2D shaders - errno: " << errnum << " - " << strerror(errnum) << std::endl;
+            std::cerr << "Make sure 2D shader files exist at: shaders/default2d.vert and shaders/default2d.frag" << std::endl;
+            shader2D = nullptr;
+        }
 
     // Clear any GL errors from GLEW initialization
     while (glGetError() != GL_NO_ERROR);

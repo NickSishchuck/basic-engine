@@ -1,17 +1,14 @@
-//TODO: Move scene files into a separate folder
-#ifndef PHYSICS_TEST_SCENE_H
-#define PHYSICS_TEST_SCENE_H
+#ifndef SIMPLE_PHYSICS_COMPONENT_H
+#define SIMPLE_PHYSICS_COMPONENT_H
 
-#include "Scene.h"
-#include "TransformComponent.h"
-#include "RenderComponent.h"
-#include <memory>
-#include <vector>
+#include "Component.h"
+#include <glm/glm.hpp>
+#include <string>
 
 namespace Engine {
 namespace Logic {
 
-// Simple physics component for testing - moved to a separate header if needed
+// Simple physics component for basic physics simulation
 class SimplePhysicsComponent : public Component {
 private:
     glm::vec3 velocity = glm::vec3(0.0f);
@@ -48,43 +45,6 @@ public:
     // Physics actions
     void ApplyForce(const glm::vec3& force) { velocity += force / mass; }
     void ApplyImpulse(const glm::vec3& impulse) { velocity += impulse; }
-};
-
-class PhysicsTestScene {
-private:
-    std::shared_ptr<Scene> scene;
-
-    // Physics entities
-    std::vector<std::shared_ptr<Entity>> fallingCubes;
-    std::shared_ptr<Entity> bouncingBall;
-    std::shared_ptr<Entity> floatingCube;
-    std::shared_ptr<Entity> pendulum;
-
-    // Scene parameters
-    float floorY = 0.0f;
-    bool physicsEnabled = true;
-    float timeScale = 1.0f;
-
-public:
-    PhysicsTestScene();
-    ~PhysicsTestScene() = default;
-
-    void Initialize();
-    void Update(float deltaTime);
-    void Destroy();
-    void Reset(); // Reset all physics objects
-
-    // Access to the underlying scene
-    std::shared_ptr<Scene> GetScene() const { return scene; }
-
-    // Physics controls
-    void SetPhysicsEnabled(bool enabled) { physicsEnabled = enabled; }
-    bool IsPhysicsEnabled() const { return physicsEnabled; }
-
-    void SetTimeScale(float scale) { timeScale = scale; }
-    float GetTimeScale() const { return timeScale; }
-
-    void SpawnRandomCube(); // Add a new falling cube
 };
 
 } // namespace Logic
