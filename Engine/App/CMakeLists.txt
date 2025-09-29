@@ -15,9 +15,14 @@ target_link_libraries(BasicApp
         Logic
 )
 
-add_custom_command(
-    TARGET BasicApp POST_BUILD
+# add_custom_command(
+#     TARGET BasicApp POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy_directory
+#     ${CMAKE_SOURCE_DIR}/renderer/shaders ${CMAKE_BINARY_DIR}/Engine/App/shaders
+#     COMMENT "Copying shaders to executable directory"
+# )
+add_custom_command(TARGET BasicApp POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/renderer/shaders ${CMAKE_BINARY_DIR}/Engine/App/shaders
-    COMMENT "Copying shaders to executable directory"
+    ${CMAKE_SOURCE_DIR}/renderer/shaders $<TARGET_FILE_DIR:BasicApp>/shaders
+    COMMENT "Copying shaders to BasicApp directory"
 )
